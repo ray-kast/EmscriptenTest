@@ -1,0 +1,360 @@
+#!/usr/bin/env ruby
+
+require_relative "rninja/rninja"
+
+RNinja.config(file: "build.yaml") do
+  init :debug,
+    :debug_symbols,
+    :diagnostic,
+    :lto,
+    :optimize,
+    :sanitize
+
+  defaults build_profile: false,
+    diagnostic: false,
+    gen: :ninja
+
+  profile :release, {
+    debug: false,
+    debug_symbols: false,
+    diagnostic: false,
+    sanitize: false,
+    lto: true,
+    optimize: :full,
+  }
+
+  profile :debug, {
+    debug: true,
+    debug_symbols: true,
+    sanitize: true,
+    lto: false,
+    optimize: :debug,
+  }
+
+  profile :diagnostic, {
+    debug: true,
+    diagnostic: true,
+  }
+
+  profile :make, {
+    gen: :make,
+  }
+
+  default_profiles :release
+end
+
+RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
+  san_flags = (["address", "undefined"].map{|s| "-fsanitize=#{s}" } if config(:sanitize))
+
+  set bin_d: "bin",
+    build_d: "build",
+    emscripten_d: "/usr/lib/emscripten",
+    include_d: "include",
+    script_d: "scripts",
+    src_d: "src",
+    tool_d: "tools",
+    ruby: "ruby",
+    cc: "clang",
+    cxx: "clang++",
+    emcc: "$emscripten_d/emcc",
+    emcxx: "$emscripten_d/em++",
+    emld: "$emcxx",
+    ld: "$cxx"
+
+  include_dirs = [
+    "$include_d",
+  ]
+
+  includes = [
+    *(include_dirs.flat_map{|i| ["-I#{i}", "-isystem #{i}"] }),
+  ]
+
+  cc_pch_files = [
+  ].map{|p| [p, "#{p.sub("$include_d", "$build_d/include")}.pch"] }
+
+  cxx_pch_files = [
+  ].map{|p| [p, "#{p.sub("$include_d", "$build_d/include")}.pch"] }
+
+  cc_pchs = cc_pch_files.map{|_, o| "-include-pch #{o}" }
+  cxx_pchs = cxx_pch_files.map{|_, o| "-include-pch #{o}" }
+
+  pkcflags = Set[]
+  pkcxxflags = Set[]
+  pkldflags = Set[]
+
+  # Packages registered with pkg-config
+  %w[eigen3].each do |pkg|
+    cflags = Command.read("pkg-config --cflags '#{pkg}'").split(/\s+/)
+
+    cflags.append(*Command.read("pkg-config --cflags-only-I '#{pkg}'").split(/\s+/)
+      .map{|s| s.gsub(/^-I/, "").strip }
+      .select{|s| !s.empty? }
+      .map{|s| "-isystem #{s}" })
+
+    pkcflags.merge(cflags)
+    pkcxxflags.merge(cflags)
+    pkldflags.merge(Command.read("pkg-config --libs '#{pkg}'").split(/\s+/))
+  end
+
+  # Libraries to link against
+  ldlibs = %w[dl].map{|s| "-l#{s}" }
+
+  cc_common_flags = [
+    "-fcolor-diagnostics",
+    "-ferror-limit=0",
+    "-std=c11",
+    *("-g" if config(:debug_symbols)),
+    *("-flto" if config(:lto)),
+    *(config(:debug) ? [
+      "-DDEBUG",
+      "-D_DEBUG",
+    ] : [
+      "-DNDEBUG",
+      "-D_NDEBUG",
+    ]),
+    *(config(:diagnostic) ? [
+      "-DDEBUG_DIAGNOSTIC",
+      "-D_DEBUG_DIAGNOSTIC",
+    ] : []),
+    *(config(:build_profile) ? [
+      "-v",
+      "-ftime-report",
+    ] : []),
+    *pkcflags,
+    *includes,
+  ]
+
+  cxx_common_flags = [
+    "-fcolor-diagnostics",
+    "-ferror-limit=0",
+    "-std=c++17",
+    *("-g3" if config(:debug_symbols)),
+    *("-flto" if config(:lto)),
+    *(config(:debug) ? [
+      "-D_GLIBCXX_DEBUG",
+      "-D_GLIBCXX_DEBUG_PEDANTIC",
+      "-D_LIBCPP_DEBUG",
+      "-DDEBUG",
+      "-D_DEBUG",
+    ] : [
+      "-DNDEBUG",
+      "-D_NDEBUG",
+    ]),
+    *(config(:diagnostic) ? [
+      "-DDEBUG_DIAGNOSTIC",
+      "-D_DEBUG_DIAGNOSTIC",
+    ] : []),
+    *(config(:build_profile) ? [
+      "-v",
+      "-ftime-report",
+    ] : []),
+    *pkcxxflags,
+    *includes,
+  ]
+
+  ld_common_flags = [
+    *("-flto" if config(:lto)),
+    *ldlibs,
+    *pkldflags,
+  ]
+
+  set cc_flags: [
+      *cc_common_flags,
+      "-O#{case config(:optimize)
+        when :none; "0"
+        when :debug; "g"
+        when :full; "3"
+        when :fast; "fast"
+      end}",
+      *san_flags,
+    ],
+    cxx_flags: [
+      *cxx_common_flags,
+      "-O#{case config(:optimize)
+        when :none; "0"
+        when :debug; "g"
+        when :full; "3"
+        when :fast; "fast"
+      end}",
+      *san_flags,
+    ],
+    cc_diags: [
+      "-Wall",
+      "-Wextra",
+      "-Wimplicit",
+      "-Wshadow",
+      "-Wunused",
+    ],
+    cxx_diags: [
+      "-fdiagnostics-show-template-tree",
+      "-Wall",
+      "-Wconditional-uninitialized",
+      "-Wconversion",
+      "-Wcovered-switch-default",
+      "-Wdeprecated",
+      "-Wextra",
+      "-Wimplicit",
+      "-Winvalid-noreturn",
+      "-Wmissing-noreturn",
+      "-Wmissing-prototypes",
+      "-Wmissing-variable-declarations",
+      "-Wnewline-eof",
+      "-Wshadow-all",
+      "-Wno-logical-op-parentheses",
+      "-Wno-shorten-64-to-32",
+      "-Wno-sign-compare",
+      "-Wno-sign-conversion",
+      "-Wnon-virtual-dtor",
+      "-Wtautological-compare",
+      "-Wthread-safety",
+      "-Wunreachable-code-aggressive",
+      "-Wuninitialized",
+      "-Wunused",
+      "-Werror=implicit-fallthrough",
+      "-Werror=old-style-cast",
+      "-Werror=return-type",
+      "-Werror=switch",
+      "-Werror=unused-result",
+      "-Werror=zero-as-null-pointer-constant",
+      *(config(:diagnostic) ? [
+        "-Wswitch-bool",
+        "-Wswitch-enum",
+        "-Wweak-vtables",
+        "-Wweak-template-vtables",
+
+        # Anti-spam measures:
+        "-fno-caret-diagnostics",
+        "-fno-diagnostics-fixit-info",
+      ] : [
+        # Disabled by diagnostic as anti-spam measure:
+        "-fno-elide-type",
+        "-ftemplate-backtrace-limit=0",
+      ]),
+    ],
+    cc_pchs: cc_pchs,
+    cxx_pchs: cxx_pchs,
+    emcc_flags: [
+      *cc_common_flags,
+      "-O#{case config(:optimize)
+        when :none; "0"
+        when :debug; "0"
+        when :full; "3"
+        when :fast; "3"
+      end}",
+    ],
+    emcxx_flags: [
+      *cxx_common_flags,
+      "-O#{case config(:optimize)
+        when :none; "0"
+        when :debug; "0"
+        when :full; "3"
+        when :fast; "3"
+      end}",
+    ],
+    emld_flags: [
+      *ld_common_flags,
+      "-O#{case config(:optimize)
+        when :none; "0"
+        when :debug; "0"
+        when :full; "3"
+        when :fast; "3"
+      end}"
+    ],
+    ld_flags: [
+      *ld_common_flags,
+      *san_flags,
+    ]
+
+  rule :cc,
+    build: ".o",
+    from: ".c",
+    command: "$cc $cc_flags $cc_diags $cc_pchs $flags -MMD -MF $out.d -c -o $out $in",
+    deps: "gcc",
+    depfile: "$out.d",
+    restat: true
+
+  rule :cxx,
+    build: ".o",
+    from: ".cpp",
+    command: "$cxx $cxx_flags $cxx_diags $cxx_pchs $flags -MMD -MF $out.d -c -o $out $in",
+    deps: "gcc",
+    depfile: "$out.d",
+    restat: true
+
+  rule :cc_pch,
+    build: ".pch",
+    from: ".h",
+    command: "$cc $cc_flags $flags -MMD -MF $out.d -c -o $out -xc++-header $in",
+    deps: "gcc",
+    depfile: "$out.d",
+    restat: true
+
+  rule :cxx_pch,
+    build: ".pch",
+    from: ".hpp",
+    command: "$cxx $cxx_flags $flags -MMD -MF $out.d -c -o $out -xc++-header $in",
+    deps: "gcc",
+    depfile: "$out.d",
+    restat: true
+
+  rule :emcc,
+    build: ".bc",
+    from: ".c",
+    command: "$emcc $emcc_flags $cc_diags $flags -c -o $out $in"
+
+  rule :emcxx,
+    build: ".bc",
+    from: ".cpp",
+    command: "$emcxx $emcxx_flags $cxx_diags $flags -c -o $out $in"
+
+  rule :emld,
+    info: "emlink $out",
+    command: "$emld $emld_flags $flags -o $out $in",
+    pool: :console
+
+  rule :ld,
+    build: "",
+    from: ".o",
+    info: "link $out",
+    command: "$ld $ld_flags $flags -o $out $in"
+
+  cc_pch_files.each do |file, out|
+    build out, from: file, with: :cc_pch
+  end
+
+  cxx_pch_files.each do |file, out|
+    build out, from: file, with: :cxx_pch
+  end
+
+  cc_pch_outs = cc_pch_files.map{|_, o| o }
+
+  cxx_pch_outs = cxx_pch_files.map{|_, o| o }
+
+  objs = []
+  bcs = []
+
+  set includes: ["$src_d", "$build_d"].map{|i| "-I#{i}" }
+
+  var_glob(:src_d, "**/*.cpp").each do |file|
+    obj = File.change_ext(file.sub("$src_d", "$build_d"), ".o")
+    build obj, from: file,
+      flags: "$includes"
+    objs << obj
+
+    bc = File.change_ext(file.sub("$src_d", "$build_d"), ".bc")
+    build bc, from: file,
+      flags: "$includes"
+    bcs << bc
+  end
+
+  build "$bin_d/test", from: objs
+
+  build "$bin_d/test.html", from: bcs, with: :emld,
+    also: ["$bin_d/test.js", "$bin_d/test.wasm"],
+    description: "build test.html",
+    default: true
+
+  phony "test", is: "$bin_d/test",
+    description: "build test",
+    default: true
+end

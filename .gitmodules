@@ -1,0 +1,3 @@
+[submodule "scripts/rninja"]
+	path = scripts/rninja
+	url = https://github.com/rk1024/RNinja
