@@ -83,7 +83,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
   pkldflags = Set[]
 
   # Packages registered with pkg-config
-  %w[eigen3].each do |pkg|
+  %w[egl eigen3 x11].each do |pkg|
     cflags = Command.read("pkg-config --cflags '#{pkg}'").split(/\s+/)
 
     cflags.append(*Command.read("pkg-config --cflags-only-I '#{pkg}'").split(/\s+/)
@@ -235,6 +235,8 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     cxx_pchs: cxx_pchs,
     emcc_flags: [
       *cc_common_flags,
+      "-DJS",
+      "-D_JS",
       "-O#{case config(:optimize)
         when :none; "0"
         when :debug; "0"
@@ -244,6 +246,8 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     ],
     emcxx_flags: [
       *cxx_common_flags,
+      "-DJS",
+      "-D_JS",
       "-O#{case config(:optimize)
         when :none; "0"
         when :debug; "0"
@@ -333,7 +337,12 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
   objs = []
   bcs = []
 
-  set includes: ["$src_d", "$build_d"].map{|i| "-I#{i}" }
+  set includes: [
+    "$src_d/common",
+    "$src_d/core",
+    "$src_d",
+    "$build_d"
+  ].map{|i| "-I#{i}" }
 
   var_glob(:src_d, "**/*.cpp").each do |file|
     obj = File.change_ext(file.sub("$src_d", "$build_d"), ".o")
@@ -351,7 +360,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
 
   build "$bin_d/test.html", from: bcs, with: :emld,
     also: ["$bin_d/test.js", "$bin_d/test.wasm"],
-    description: "build test.html",
+    description: "emscripten test.html",
     default: true
 
   phony "test", is: "$bin_d/test",
