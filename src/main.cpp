@@ -1,23 +1,28 @@
-#include <iostream>
+#include "program.hpp"
 
-#include <Eigen/Eigen>
+#if defined(_JS)
+#include <emscripten.h>
 
-#include <EGL/egl.h>
+static Program *s_program;
+
+static void mainLoop() { s_program->mainLoop(); }
+
+int main(int argc, char **argv) {
+  s_program = new Program(argc, argv);
+
+  emscripten_set_main_loop(mainLoop, 30, false);
+}
+#else
 #include <GLES2/gl2.h>
 
-#include <matrixMath.hpp>
+#include <diag.hpp>
 
-#include <cegl/context.hpp>
-#include <cx/display.hpp>
-#include <cx/window.hpp>
+int main(int argc, char **argv) {
+  Program program(argc, argv);
 
-int main(int, char **) {
-  Eigen::Vector3f vec(0.0f, 1.0f, 2.0f);
-
-  cx::Display   disp(nullptr);
-  auto          root = cx::Window::root(disp);
-  cx::Window    win(root);
-  cegl::Context ctx(win);
+  while (program.mainLoop())
+    ;
 
   return 0;
 }
+#endif

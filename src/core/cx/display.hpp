@@ -2,24 +2,26 @@
 
 #include <X11/Xlib.h>
 
-#include <nocopy.hpp>
+#include <linear.hpp>
 
 namespace cegl {
-class Context;
+class Display;
 }
 
 namespace cx {
-class Window;
-
 class Display {
-  ::Display *m_disp;
+  core::Linear<::Display *, nullptr> m_disp;
 
 public:
-  CORE_NOCOPY_MOVE(Display);
+  Display() {}
 
   explicit Display(const char *);
 
+  ~Display();
+
+  Display &operator=(Display &&) = default;
+
   friend class Window;
-  friend class cegl::Context;
+  friend class cegl::Display;
 };
 } // namespace cx

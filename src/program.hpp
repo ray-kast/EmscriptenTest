@@ -1,0 +1,26 @@
+#pragma once
+
+#include <cx/display.hpp>
+#include <cx/window.hpp>
+
+#include <cegl/context.hpp>
+#include <cegl/display.hpp>
+#include <cegl/makeCurrent.hpp>
+#include <cegl/surface.hpp>
+
+class Program {
+  cx::Display m_xDisp;
+  cx::Window  m_win;
+
+  cegl::Display     m_disp;
+  cegl::Surface     m_surf;
+  cegl::Context     m_ctx;
+  cegl::MakeCurrent m_makeCurrent;
+
+public:
+  Program(int, char **);
+
+  ~Program();
+
+  bool mainLoop();
+};

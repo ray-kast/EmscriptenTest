@@ -5,6 +5,7 @@ require_relative "rninja/rninja"
 RNinja.config(file: "build.yaml") do
   init :debug,
     :debug_symbols,
+    :em_optimize,
     :diagnostic,
     :lto,
     :optimize,
@@ -18,6 +19,7 @@ RNinja.config(file: "build.yaml") do
     debug: false,
     debug_symbols: false,
     diagnostic: false,
+    em_optimize: true,
     sanitize: false,
     lto: true,
     optimize: :full,
@@ -26,6 +28,7 @@ RNinja.config(file: "build.yaml") do
   profile :debug, {
     debug: true,
     debug_symbols: true,
+    em_optimize: true,
     sanitize: true,
     lto: false,
     optimize: :debug,
@@ -83,7 +86,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
   pkldflags = Set[]
 
   # Packages registered with pkg-config
-  %w[egl eigen3 x11].each do |pkg|
+  %w[egl eigen3 glesv2 x11].each do |pkg|
     cflags = Command.read("pkg-config --cflags '#{pkg}'").split(/\s+/)
 
     cflags.append(*Command.read("pkg-config --cflags-only-I '#{pkg}'").split(/\s+/)
@@ -237,32 +240,17 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       *cc_common_flags,
       "-DJS",
       "-D_JS",
-      "-O#{case config(:optimize)
-        when :none; "0"
-        when :debug; "0"
-        when :full; "3"
-        when :fast; "3"
-      end}",
+      "-O#{config(:em_optimize) ? "3" : "0"}",
     ],
     emcxx_flags: [
       *cxx_common_flags,
       "-DJS",
       "-D_JS",
-      "-O#{case config(:optimize)
-        when :none; "0"
-        when :debug; "0"
-        when :full; "3"
-        when :fast; "3"
-      end}",
+      "-O#{config(:em_optimize) ? "3" : "0"}",
     ],
     emld_flags: [
       *ld_common_flags,
-      "-O#{case config(:optimize)
-        when :none; "0"
-        when :debug; "0"
-        when :full; "3"
-        when :fast; "3"
-      end}"
+      "-O#{config(:em_optimize) ? "3" : "0"}",
     ],
     ld_flags: [
       *ld_common_flags,

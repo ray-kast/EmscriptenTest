@@ -6,10 +6,15 @@
 
 namespace cx {
 Window Window::root(const Display &disp) {
-  return Window(disp, DefaultRootWindow(disp.m_disp));
+  return Window(disp, DefaultRootWindow(disp.m_disp.get()));
 }
 
-Window::Window(const Window &parent) : m_disp(parent.m_disp) {
+Window::Window(const Window &parent,
+               int           x,
+               int           y,
+               unsigned int  width,
+               unsigned int  height) :
+    m_disp(parent.m_disp) {
   XSetWindowAttributes swa;
 
   swa.event_mask = ExposureMask | PointerMotionMask | KeyPressMask;
@@ -18,10 +23,10 @@ Window::Window(const Window &parent) : m_disp(parent.m_disp) {
 
   m_win = XCreateWindow(m_disp->m_disp,
                         parent.m_win,
-                        0,
-                        0,
-                        100,
-                        100,
+                        x,
+                        y,
+                        width,
+                        height,
                         0,
                         CopyFromParent,
                         InputOutput,
