@@ -4,6 +4,7 @@ require_relative "rninja/rninja"
 
 RNinja.config(file: "build.yaml") do
   init :debug,
+    :debug_stl,
     :debug_symbols,
     :em_optimize,
     :diagnostic,
@@ -12,11 +13,13 @@ RNinja.config(file: "build.yaml") do
     :sanitize
 
   defaults build_profile: false,
+    em_catch_exceptions: false,
     diagnostic: false,
     gen: :ninja
 
   profile :release, {
     debug: false,
+    debug_stl: false,
     debug_symbols: false,
     diagnostic: false,
     em_optimize: true,
@@ -27,6 +30,7 @@ RNinja.config(file: "build.yaml") do
 
   profile :debug, {
     debug: true,
+    debug_stl: true,
     debug_symbols: true,
     em_optimize: true,
     sanitize: true,
@@ -134,15 +138,17 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     *("-g3" if config(:debug_symbols)),
     *("-flto" if config(:lto)),
     *(config(:debug) ? [
-      "-D_GLIBCXX_DEBUG",
-      "-D_GLIBCXX_DEBUG_PEDANTIC",
-      "-D_LIBCPP_DEBUG",
       "-DDEBUG",
       "-D_DEBUG",
     ] : [
       "-DNDEBUG",
       "-D_NDEBUG",
     ]),
+    *([
+      "-D_GLIBCXX_DEBUG",
+      "-D_GLIBCXX_DEBUG_PEDANTIC",
+      "-D_LIBCPP_DEBUG",
+    ] if config(:debug_stl)),
     *(config(:diagnostic) ? [
       "-DDEBUG_DIAGNOSTIC",
       "-D_DEBUG_DIAGNOSTIC",
@@ -247,10 +253,12 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       "-DJS",
       "-D_JS",
       "-O#{config(:em_optimize) ? "3" : "0"}",
+      *("-s DISABLE_EXCEPTION_CATCHING=0" if config(:em_catch_exceptions)),
     ],
     emld_flags: [
       *ld_common_flags,
       "-O#{config(:em_optimize) ? "3" : "0"}",
+      *("-s DISABLE_EXCEPTION_CATCHING=0" if config(:em_catch_exceptions)),
     ],
     ld_flags: [
       *ld_common_flags,

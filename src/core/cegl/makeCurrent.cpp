@@ -11,7 +11,7 @@
 
 namespace cegl {
 // TODO: Does this need to be a map over the display?
-static MakeCurrent *s_currMakeCurrent = nullptr;
+static bool s_hasCurrent = false;
 
 MakeCurrent::MakeCurrent(const Surface &draw,
                          const Surface &read,
@@ -21,10 +21,8 @@ MakeCurrent::MakeCurrent(const Surface &draw,
       read.m_disp->m_disp != ctx.m_disp->m_disp)
     throw std::runtime_error("draw, read, and context displays don't match");
 
-  if (s_currMakeCurrent)
-    throw std::runtime_error("current MakeCurrent not null");
-
-  s_currMakeCurrent = this;
+  if (s_hasCurrent) throw std::runtime_error("current context already set");
+  s_hasCurrent = true;
 
   if (!eglMakeCurrent(ctx.m_disp->m_disp, draw.m_surf, read.m_surf, ctx.m_ctx))
     throw std::runtime_error("eglMakeCurrent failed");
@@ -37,6 +35,6 @@ MakeCurrent::~MakeCurrent() {
           m_disp.get()->m_disp, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT))
     err("eglMakeCurrent failed");
 
-  s_currMakeCurrent = nullptr;
+  s_hasCurrent = false;
 }
 } // namespace cegl

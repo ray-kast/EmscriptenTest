@@ -4,6 +4,8 @@
 
 #include <diag.hpp>
 
+#include "attribList.hpp"
+
 namespace cegl {
 Display::Display(const cx::Display &disp) {
   m_disp = eglGetDisplay(
@@ -31,6 +33,24 @@ std::vector<EGLConfig> Display::getConfigs() const {
 
   if (!eglGetConfigs(m_disp, &ret[0], ret.size(), &count))
     throw std::runtime_error("eglGetConfigs retrieval failed");
+
+  return ret;
+}
+
+std::vector<EGLConfig> Display::chooseConfig(
+    const std::vector<EGLint> &attribs) const {
+  EGLint count;
+
+  if (!eglGetConfigs(m_disp, nullptr, 0, &count))
+    throw std::runtime_error("eglChooseConfig query failed");
+
+  std::vector<EGLConfig> ret(count);
+
+  auto attribList = makeAttribList(attribs);
+  if (!eglChooseConfig(m_disp, &attribList[0], &ret[0], count, &count))
+    throw std::runtime_error("eglChooseConfig retrieval failed");
+
+  ret.resize(count);
 
   return ret;
 }

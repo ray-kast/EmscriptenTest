@@ -8,14 +8,13 @@
 #include <cx/display.hpp>
 #include <cx/window.hpp>
 
+#include "attribList.hpp"
+
 namespace cegl {
 Context::Context(const Surface &surf, const std::vector<EGLint> &attribs) :
     m_disp(surf.m_disp) {
-  std::vector<EGLint> attribList(attribs.size() + 1);
-  attribList.insert(attribList.begin(), attribs.begin(), attribs.end());
-  attribList[attribs.size()] = EGL_NONE;
-
-  m_ctx = eglCreateContext(surf.m_disp->m_disp,
+  auto attribList = makeAttribList(attribs);
+  m_ctx           = eglCreateContext(surf.m_disp->m_disp,
                            surf.m_conf,
                            EGL_NO_CONTEXT,
                            &attribList[0]);

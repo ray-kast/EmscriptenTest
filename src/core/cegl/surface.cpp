@@ -4,6 +4,8 @@
 
 #include <diag.hpp>
 
+#include "attribList.hpp"
+
 namespace cegl {
 Surface::Surface(const Display &            disp,
                  EGLConfig                  config,
@@ -11,11 +13,8 @@ Surface::Surface(const Display &            disp,
                  const std::vector<EGLint> &attribs) :
     m_disp(&disp),
     m_conf(config) {
-  std::vector<EGLint> attribList(attribs.size() + 1);
-  attribList.insert(attribList.begin(), attribs.begin(), attribs.end());
-  attribList[attribs.size()] = EGL_NONE;
-
-  m_surf = eglCreateWindowSurface(disp.m_disp,
+  auto attribList = makeAttribList(attribs);
+  m_surf          = eglCreateWindowSurface(disp.m_disp,
                                   config,
                                   win.m_win,
                                   &attribList[0]);

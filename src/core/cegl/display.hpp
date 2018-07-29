@@ -26,8 +26,11 @@ public:
 
   std::vector<EGLConfig> getConfigs() const;
 
+  std::vector<EGLConfig> chooseConfig(const std::vector<EGLint> &) const;
+
   Display &operator=(Display &&) = default;
 
+  friend class ConfigInfo;
   friend class Context;
   friend class MakeCurrent;
   friend class Surface;

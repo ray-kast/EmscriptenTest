@@ -8,6 +8,8 @@
 #include <cegl/makeCurrent.hpp>
 #include <cegl/surface.hpp>
 
+#include <cgles2/material.hpp>
+
 class Program {
   cx::Display m_xDisp;
   cx::Window  m_win;
@@ -16,6 +18,8 @@ class Program {
   cegl::Surface     m_surf;
   cegl::Context     m_ctx;
   cegl::MakeCurrent m_makeCurrent;
+
+  cgl::Material m_mat;
 
 public:
   Program(int, char **);
