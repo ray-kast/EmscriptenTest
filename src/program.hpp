@@ -28,6 +28,8 @@ class Program {
   unsigned int m_width, m_height;
 
 public:
+  constexpr auto &xDisp() { return m_xDisp; }
+
   Program(int, char **);
 
   ~Program();

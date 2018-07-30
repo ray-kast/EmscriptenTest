@@ -12,11 +12,24 @@ Display::Display(const char *name) {
 Display::~Display() {
   if (m_disp.empty()) return;
 
-#if defined(_JS)
-// Nothing to do here (probably)
-// This is mainly because XCloseDisplay apparently doesn't exist here
-#else
-  if (XCloseDisplay(m_disp)) err("XCloseDisplay failed");
+#if !defined(_JS)
+  XCloseDisplay(m_disp);
 #endif
+}
+
+Atom Display::internAtom(const std::string &str) const {
+  return XInternAtom(m_disp, str.c_str(), false);
+}
+
+std::string Display::atomName(Atom atom) const {
+  return XGetAtomName(m_disp, atom);
+}
+
+bool Display::pending() const { return XPending(m_disp); }
+
+XEvent Display::nextEvent() {
+  XEvent ret;
+  XNextEvent(m_disp, &ret);
+  return ret;
 }
 } // namespace cx

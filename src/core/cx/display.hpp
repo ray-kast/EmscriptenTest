@@ -19,6 +19,14 @@ public:
 
   ~Display();
 
+  Atom internAtom(const std::string &) const;
+
+  std::string atomName(Atom) const;
+
+  bool pending() const;
+
+  XEvent nextEvent();
+
   Display &operator=(Display &&) = default;
 
   friend class Window;

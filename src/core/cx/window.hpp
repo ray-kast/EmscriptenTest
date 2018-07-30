@@ -24,6 +24,10 @@ public:
 
   Window(const Window &, int x, int y, unsigned int width, unsigned int height);
 
+  std::string title() const;
+
+  void title(const std::string &);
+
   // TODO: does this need a destructor?
 
   Window &operator=(Window &&) = default;

@@ -13,6 +13,8 @@ Program::Program(int, char **) {
   auto root = cx::Window::root(m_xDisp);
   m_win     = cx::Window(root, 0, 0, START_W, START_H);
 
+  m_win.title("a window");
+
   m_disp = cegl::Display(m_xDisp);
 
   info("using EGL version " + std::to_string(m_disp.majorVer()) + "." +
