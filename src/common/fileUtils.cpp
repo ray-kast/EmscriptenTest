@@ -1,16 +1,17 @@
 #include "fileUtils.hpp"
 
 #include <fstream>
-#include <stdexcept>
 
 #if !defined(_JS)
 #include <unistd.h>
 #endif
 
+#include "diag.hpp"
+
 std::string readFile(const std::string &file) {
   std::ifstream ifs(file);
 
-  if (!ifs) throw std::runtime_error("failed to open '" + file + "'");
+  if (!ifs) die("failed to open '" + file + "'");
 
   return std::string(std::istreambuf_iterator<char>(ifs),
                      std::istreambuf_iterator<char>());
@@ -24,9 +25,9 @@ std::string getExeDir() {
   auto size = readlink("/proc/self/exe", buf, sizeof(buf));
 
   if (size < 0)
-    throw std::runtime_error("readlink /proc/self/exe failed");
+    die("readlink /proc/self/exe failed");
   else if (size >= sizeof(buf))
-    throw std::runtime_error("readlink /proc/self/exe overflowed");
+    die("readlink /proc/self/exe overflowed");
 
   buf[size] = 0;
 

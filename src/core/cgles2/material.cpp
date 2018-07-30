@@ -2,6 +2,8 @@
 
 #include <fileUtils.hpp>
 
+#include <diag.hpp>
+
 namespace cgl {
 SetupMaterial::SetupMaterial(Material &mat) : m_mat(&mat) {
   mat.m_pgm = Program::create();
@@ -30,8 +32,7 @@ void SetupMaterial::add(GLenum type, const std::string &path) {
   auto pair = m_shaders.emplace(type, std::make_pair(type, path));
 
   if (!pair.second)
-    throw std::runtime_error("shader type " + std::to_string(type) +
-                             " already added");
+    die("shader type " + std::to_string(type) + " already added");
 
   m_mat->m_pgm.add(pair.first->second.first);
 }

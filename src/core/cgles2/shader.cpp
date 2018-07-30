@@ -18,7 +18,7 @@ std::string Shader::getLog() {
 
 Shader::Shader(GLenum type) {
   m_shd = glCreateShader(type);
-  if (!m_shd) throw std::runtime_error("glCreateShader failed");
+  if (!m_shd) die("glCreateShader failed");
 }
 
 Shader::~Shader() {
@@ -40,7 +40,7 @@ void Shader::compile() {
 
   if (!success) {
     err("in shader " + std::to_string(m_shd) + ": " + getLog());
-    throw std::runtime_error("glCompileShader failed");
+    die("glCompileShader failed");
   }
 }
 } // namespace cgl

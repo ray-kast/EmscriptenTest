@@ -1,13 +1,14 @@
 #include "configInfo.hpp"
 
 #include <sstream>
-#include <stdexcept>
+
+#include <diag.hpp>
 
 namespace cegl {
 EGLint ConfigInfo::attr(EGLint id) const {
   EGLint ret;
   if (!eglGetConfigAttrib(m_disp->m_disp, m_config, id, &ret))
-    throw std::runtime_error("eglGetConfigAttrib failed");
+    die("eglGetConfigAttrib failed");
   return ret;
 }
 } // namespace cegl

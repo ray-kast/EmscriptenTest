@@ -1,7 +1,5 @@
 #include "makeCurrent.hpp"
 
-#include <stdexcept>
-
 #include <EGL/egl.h>
 
 #include <diag.hpp>
@@ -19,13 +17,13 @@ MakeCurrent::MakeCurrent(const Surface &draw,
     m_disp(ctx.m_disp) {
   if (draw.m_disp->m_disp != read.m_disp->m_disp ||
       read.m_disp->m_disp != ctx.m_disp->m_disp)
-    throw std::runtime_error("draw, read, and context displays don't match");
+    die("draw, read, and context displays don't match");
 
-  if (s_hasCurrent) throw std::runtime_error("current context already set");
+  if (s_hasCurrent) die("current context already set");
   s_hasCurrent = true;
 
   if (!eglMakeCurrent(ctx.m_disp->m_disp, draw.m_surf, read.m_surf, ctx.m_ctx))
-    throw std::runtime_error("eglMakeCurrent failed");
+    die("eglMakeCurrent failed");
 }
 
 MakeCurrent::~MakeCurrent() {

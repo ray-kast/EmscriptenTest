@@ -1,7 +1,5 @@
 #include "surface.hpp"
 
-#include <stdexcept>
-
 #include <diag.hpp>
 
 #include "attribList.hpp"
@@ -19,8 +17,7 @@ Surface::Surface(const Display &            disp,
                                   win.m_win,
                                   &attribList[0]);
 
-  if (m_surf == EGL_NO_SURFACE)
-    throw std::runtime_error("eglCreateWindowSurface failed");
+  if (m_surf == EGL_NO_SURFACE) die("eglCreateWindowSurface failed");
 }
 
 Surface::~Surface() {

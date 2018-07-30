@@ -1,14 +1,12 @@
 #include "display.hpp"
 
-#include <stdexcept>
-
 #include <diag.hpp>
 
 namespace cx {
 Display::Display(const char *name) {
   m_disp = XOpenDisplay(name);
 
-  if (!m_disp) throw std::runtime_error("XOpenDisplay failed");
+  if (!m_disp) die("XOpenDisplay failed");
 }
 
 Display::~Display() {

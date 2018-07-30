@@ -1,7 +1,6 @@
 #include "context.hpp"
 
 #include <iostream>
-#include <stdexcept>
 
 #include <diag.hpp>
 
@@ -19,8 +18,7 @@ Context::Context(const Surface &surf, const std::vector<EGLint> &attribs) :
                            EGL_NO_CONTEXT,
                            &attribList[0]);
 
-  if (m_ctx == EGL_NO_CONTEXT)
-    throw std::runtime_error("eglCreateContext failed");
+  if (m_ctx == EGL_NO_CONTEXT) die("eglCreateContext failed");
 }
 
 Context::~Context() {

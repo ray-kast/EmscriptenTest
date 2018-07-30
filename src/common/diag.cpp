@@ -1,6 +1,7 @@
 #include "diag.hpp"
 
 #include <iostream>
+#include <stdexcept>
 
 #if defined(_JS)
 #define DIAG_STREAM std::cout
@@ -34,5 +35,5 @@ void err(const std::string &msg) {
 
 void die(const std::string &msg) {
   err(msg);
-  abort();
+  throw std::runtime_error(msg);
 }

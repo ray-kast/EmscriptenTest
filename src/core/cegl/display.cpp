@@ -1,7 +1,5 @@
 #include "display.hpp"
 
-#include <stdexcept>
-
 #include <diag.hpp>
 
 #include "attribList.hpp"
@@ -16,23 +14,21 @@ Display::Display(const cx::Display &disp) {
 #endif
   );
 
-  if (m_disp == EGL_NO_DISPLAY)
-    throw std::runtime_error("eglGetDisplay failed");
+  if (m_disp == EGL_NO_DISPLAY) die("eglGetDisplay failed");
 
-  if (!eglInitialize(m_disp, &m_major, &m_minor))
-    throw std::runtime_error("eglInitialize failed");
+  if (!eglInitialize(m_disp, &m_major, &m_minor)) die("eglInitialize failed");
 }
 
 std::vector<EGLConfig> Display::getConfigs() const {
   EGLint count;
 
   if (!eglGetConfigs(m_disp, nullptr, 0, &count))
-    throw std::runtime_error("eglGetConfigs query failed");
+    die("eglGetConfigs query failed");
 
   std::vector<EGLConfig> ret(count);
 
   if (!eglGetConfigs(m_disp, &ret[0], ret.size(), &count))
-    throw std::runtime_error("eglGetConfigs retrieval failed");
+    die("eglGetConfigs retrieval failed");
 
   return ret;
 }
@@ -42,13 +38,13 @@ std::vector<EGLConfig> Display::chooseConfig(
   EGLint count;
 
   if (!eglGetConfigs(m_disp, nullptr, 0, &count))
-    throw std::runtime_error("eglChooseConfig query failed");
+    die("eglChooseConfig query failed");
 
   std::vector<EGLConfig> ret(count);
 
   auto attribList = makeAttribList(attribs);
   if (!eglChooseConfig(m_disp, &attribList[0], &ret[0], count, &count))
-    throw std::runtime_error("eglChooseConfig retrieval failed");
+    die("eglChooseConfig retrieval failed");
 
   ret.resize(count);
 

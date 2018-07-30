@@ -20,7 +20,7 @@ std::string Program::getLog() {
 
 Program Program::create() {
   auto pgm = glCreateProgram();
-  if (!pgm) throw std::runtime_error("glCreateProgram failed");
+  if (!pgm) die("glCreateProgram failed");
   return Program(pgm);
 }
 
@@ -40,9 +40,8 @@ void Program::add(const Shader &shd) {
 
 void Program::semantic(GLuint idx, const std::string &name) {
   if (auto it = m_semantics.find(idx); it != m_semantics.end())
-    throw std::runtime_error("program " + std::to_string(m_pgm) +
-                             " input index " + std::to_string(idx) +
-                             " already bound to '" + it->second + "'");
+    die("program " + std::to_string(m_pgm) + " input index " +
+        std::to_string(idx) + " already bound to '" + it->second + "'");
 
   m_semantics.emplace(idx, name);
   glBindAttribLocation(m_pgm, idx, name.c_str());
@@ -56,7 +55,7 @@ void Program::link() {
 
   if (!success) {
     err("in program " + std::to_string(m_pgm) + ": " + getLog());
-    throw std::runtime_error("glLinkProgram failed");
+    die("glLinkProgram failed");
   }
 
   for (auto &attached : m_attached) glDetachShader(m_pgm, attached);
@@ -72,14 +71,14 @@ void Program::validate() {
 
   if (!success) {
     err("validating program " + std::to_string(m_pgm) + ": " + getLog());
-    throw std::runtime_error("glValidateProgram failed");
+    die("glValidateProgram failed");
   }
 }
 
 static GLuint s_using = false;
 
 UseProgram::UseProgram(const Program &pgm) : m_pgm(&pgm) {
-  if (s_using) throw std::runtime_error("program already in use");
+  if (s_using) die("program already in use");
   s_using = true;
 
   glUseProgram(m_pgm.get()->m_pgm);
