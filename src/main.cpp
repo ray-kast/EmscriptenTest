@@ -9,7 +9,7 @@ static Program *s_program;
 
 static void mainLoop() {
   try {
-    s_program->mainLoop();
+    s_program->render();
   }
   catch (std::runtime_error &e) {
     err(e.what());
@@ -26,14 +26,13 @@ int main(int argc, char **argv) {
     throw;
   }
 
-  emscripten_set_main_loop(mainLoop, 30, false);
+  emscripten_set_main_loop(mainLoop, 0, false);
 }
 #else
 int main(int argc, char **argv) {
   Program program(argc, argv);
 
-  while (program.mainLoop())
-    ;
+  while (true) program.render();
 
   return 0;
 }

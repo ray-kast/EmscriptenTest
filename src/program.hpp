@@ -25,10 +25,14 @@ class Program {
 
   cgl::Model m_triangle;
 
+  unsigned int m_width, m_height;
+
 public:
   Program(int, char **);
 
   ~Program();
 
-  bool mainLoop();
+  void render();
+
+  void resize(int, int);
 };

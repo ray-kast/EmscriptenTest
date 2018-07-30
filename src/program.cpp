@@ -7,9 +7,11 @@
 #include <cegl/configInfo.hpp>
 
 Program::Program(int, char **) {
+  const unsigned int START_W = 640, START_H = 480;
+
   m_xDisp   = cx::Display(nullptr);
   auto root = cx::Window::root(m_xDisp);
-  m_win     = cx::Window(root, 0, 0, 640, 480);
+  m_win     = cx::Window(root, 0, 0, START_W, START_H);
 
   m_disp = cegl::Display(m_xDisp);
 
@@ -82,16 +84,25 @@ Program::Program(int, char **) {
                         GL_UNSIGNED_SHORT,
                         nullptr);
   }
+
+  resize(START_W, START_H);
 }
 
 Program::~Program() {}
 
-bool Program::mainLoop() {
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
+void Program::render() {
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glCullFace(GL_BACK);
+  glDepthFunc(GL_LESS);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   glClearColor(0.1f, 0.5f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClearDepthf(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glViewport(0, 0, m_width, m_height);
 
   {
     cgl::UseProgram  pgm(m_blit);
@@ -101,6 +112,9 @@ bool Program::mainLoop() {
   }
 
   m_surf.swap();
+}
 
-  return true;
+void Program::resize(int width, int height) {
+  m_width = width;
+  m_height = height;
 }
