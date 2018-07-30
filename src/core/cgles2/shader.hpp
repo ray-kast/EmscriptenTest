@@ -21,6 +21,8 @@ public:
 
   void compile();
 
+  Shader &operator=(Shader &&) = default;
+
   friend class Program;
 };
 } // namespace cgl

@@ -31,6 +31,8 @@ public:
   constexpr operator Program &() { return pgm(); }
   constexpr operator const Program &() const { return pgm(); }
 
+  Material &operator=(Material &&) = default;
+
   friend class SetupMaterial;
 };
 

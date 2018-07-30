@@ -18,13 +18,13 @@ Program::Program(int, char **) {
 
   auto &&configs = m_disp.chooseConfig({
       // clang-format off
-      EGL_RED_SIZE,       8,
-      EGL_GREEN_SIZE,     8,
-      EGL_BLUE_SIZE,      8,
-      EGL_ALPHA_SIZE,     EGL_DONT_CARE,
-      EGL_DEPTH_SIZE,     24,
-      EGL_STENCIL_SIZE,   EGL_DONT_CARE,
-      EGL_SAMPLES,        4,
+      EGL_RED_SIZE,     8,
+      EGL_GREEN_SIZE,   8,
+      EGL_BLUE_SIZE,    8,
+      EGL_ALPHA_SIZE,   EGL_DONT_CARE,
+      EGL_DEPTH_SIZE,   24,
+      EGL_STENCIL_SIZE, EGL_DONT_CARE,
+      EGL_SAMPLES,      4,
       // clang-format on
   });
 
@@ -49,22 +49,42 @@ Program::Program(int, char **) {
     setup.input(0, "in_POSITION");
   }
 
-  glGenBuffers(1, &m_buf);
+  m_triangle = cgl::Model(GL_TRIANGLES, 2);
 
-  glBindBuffer(GL_ARRAY_BUFFER, m_buf);
+  {
+    GLfloat data[]{
+        // clang-format off
+        0.0f,  0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        // clang-format on
+    };
 
-  GLfloat data[]{
-      // clang-format off
-       0.0f,  0.5f, 0.0f,
-      -0.5f, -0.5f, 0.0f,
-       0.5f, -0.5f, 0.0f,
-      // clang-format on
-  };
+    m_triangle.loadVbuf(data,
+                        sizeof(data),
+                        cgl::FreqStatic,
+                        cgl::AccessDraw,
+                        0,
+                        3,
+                        GL_FLOAT,
+                        0,
+                        nullptr);
+  }
 
-  glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
+  {
+    GLushort data[]{0, 1, 2};
+
+    m_triangle.loadIbuf(data,
+                        sizeof(data),
+                        cgl::FreqStatic,
+                        cgl::AccessDraw,
+                        sizeof(*data),
+                        GL_UNSIGNED_SHORT,
+                        nullptr);
+  }
 }
 
-Program::~Program() { glDeleteBuffers(1, &m_buf); }
+Program::~Program() {}
 
 bool Program::mainLoop() {
   glDisable(GL_CULL_FACE);
@@ -74,13 +94,10 @@ bool Program::mainLoop() {
   glClear(GL_COLOR_BUFFER_BIT);
 
   {
-    cgl::UseProgram pgm(m_blit);
+    cgl::UseProgram  pgm(m_blit);
+    cgl::SelectModel mdl(m_triangle);
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_buf);
-    glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, nullptr);
-    glEnableVertexAttribArray(0);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    mdl.draw();
   }
 
   m_surf.swap();

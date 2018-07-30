@@ -367,7 +367,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
   build "$bin_d/test", from: objs, imply: files
 
   build "$bin_d/test.html", from: bcs, with: :emld,
-    also: ["$bin_d/test.js", "$bin_d/test.wasm"],
+    also: ["$bin_d/test.data", "$bin_d/test.js", "$bin_d/test.wasm"],
     flags: files.flat_map{|f| ["--preload-file #{f}@#{f.sub("$bin_d", "")}"] },
     imply: files,
     default: true

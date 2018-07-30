@@ -8,7 +8,9 @@
 #include <cegl/makeCurrent.hpp>
 #include <cegl/surface.hpp>
 
+#include <cgles2/buffers.hpp>
 #include <cgles2/material.hpp>
+#include <cgles2/model.hpp>
 
 class Program {
   cx::Display m_xDisp;
@@ -21,7 +23,7 @@ class Program {
 
   cgl::Material m_blit;
 
-  GLuint m_buf;
+  cgl::Model m_triangle;
 
 public:
   Program(int, char **);
