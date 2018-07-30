@@ -5,11 +5,16 @@
 
 #include <diag.hpp>
 
+static double s_startTime;
 static Program *s_pgm;
+
+inline double now() {
+  return emscripten_get_now() / 1e3;
+}
 
 static void mainLoop() {
   try {
-    s_pgm->render();
+    s_pgm->render(now() - s_startTime);
   }
   catch (std::runtime_error &e) {
     err(e.what());
@@ -26,9 +31,13 @@ int main(int argc, char **argv) {
     throw;
   }
 
+  s_startTime = now();
+
   emscripten_set_main_loop(mainLoop, 0, false);
 }
 #else
+#include <time.h>
+
 #include <diag.hpp>
 
 static int handleXError(Display *disp, XErrorEvent *evt) {
@@ -45,6 +54,13 @@ static int handleXError(Display *disp, XErrorEvent *evt) {
   die("fatal XIO error occurred");
 }
 
+inline double now() {
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+
+  return double(ts.tv_sec) + double(ts.tv_nsec) / 1e9;
+}
+
 int main(int argc, char **argv) {
   XSetErrorHandler(handleXError);
   XSetIOErrorHandler(handleXIOError);
@@ -55,6 +71,8 @@ int main(int argc, char **argv) {
 
   Atom wmProtocols    = disp.internAtom("WM_PROTOCOLS");
   Atom wmDeleteWindow = disp.internAtom("WM_DELETE_WINDOW");
+
+  double startTime = now();
 
   while (true) {
     while (disp.pending()) {
@@ -86,7 +104,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    pgm.render();
+    pgm.render(now() - startTime);
   }
 
 stop:

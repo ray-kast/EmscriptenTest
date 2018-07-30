@@ -34,7 +34,7 @@ public:
 
   ~Program();
 
-  void render();
+  void render(double time);
 
-  void resize(int, int);
+  void resize(int w, int h);
 };

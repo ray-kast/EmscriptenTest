@@ -62,6 +62,7 @@
     "utility": "cpp",
     "variant": "cpp",
     "*.ipp": "cpp",
-    "strstream": "cpp"
+    "strstream": "cpp",
+    "core": "cpp"
   }
 }

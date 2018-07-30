@@ -1,8 +1,15 @@
 #include "program.hpp"
 
+#include <array>
+
 #include <GLES2/gl2.h>
 
+#undef Success // I hate that Xlib does this.
+
+#include <Eigen/Eigen>
+
 #include <diag.hpp>
+#include <path.hpp>
 
 #include <cegl/configInfo.hpp>
 
@@ -55,38 +62,59 @@ Program::Program(int, char **) {
 
   m_triangle = cgl::Model(GL_TRIANGLES, 2);
 
-  {
-    GLfloat data[]{
-        // clang-format off
-        0.0f,  0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f,
-        // clang-format on
-    };
-
-    cgl::BindBuffer buf(GL_ARRAY_BUFFER,
-                        m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr));
-
-    buf.data(data, cgl::FreqStatic);
-  }
-
-  {
-    GLushort data[]{0, 1, 2};
-
-    cgl::BindBuffer buf(GL_ARRAY_BUFFER,
-                        m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr));
-
-    buf.data(data, cgl::FreqStatic);
-
-    m_triangle.ibufLen(sizeof(data) / sizeof(*data));
-  }
+  m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr);
+  m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr);
 
   resize(START_W, START_H);
 }
 
 Program::~Program() {}
 
-void Program::render() {
+void Program::render(double time) {
+  {
+    std::vector<Eigen::Vector3f>               pos;
+    std::vector<std::array<unsigned short, 3>> idx;
+
+    pth::Segment s0(pth::Begin, pth::Vec(-0.5f, -0.5f)),
+        s1(pth::Bezier, pth::Vec(0.5f, -0.5f));
+
+    s1.bez.a3 = pth::Scalar(3) *
+                pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(time)));
+    s1.bez.b3 = pth::Scalar(3) *
+                pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(time)));
+
+    pos.push_back(Eigen::Vector3f(0.0f, 0.5f, 0.0f));
+
+    bool           first = true;
+    unsigned short last  = 0;
+
+    for (auto it = s1.begin(&s0, 40), end = s1.end(&s0, 40); it != end; ++it) {
+      pos.push_back(Eigen::Vector3f(it->x(), it->y(), 0.0f));
+      unsigned short curr(pos.size() - 1);
+
+      if (first)
+        first = false;
+      else
+        idx.push_back({0, last, curr});
+
+      last = curr;
+    }
+
+    {
+      cgl::BindBuffer buf(GL_ARRAY_BUFFER, m_triangle[0]);
+
+      buf.data(pos, cgl::FreqDynamic);
+    }
+
+    {
+      cgl::BindBuffer buf(GL_ELEMENT_ARRAY_BUFFER, m_triangle[1]);
+
+      buf.data(idx, cgl::FreqDynamic);
+
+      m_triangle.ibufLen(idx.size() * 3);
+    }
+  }
+
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
