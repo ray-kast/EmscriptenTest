@@ -52,32 +52,25 @@ enum SegmentType {
 struct Segment;
 
 class SegmentIter {
-  const Segment *m_curr = nullptr, *m_prev = nullptr;
-  int            m_pos = 0, m_end = 0;
+  const Segment *m_curr, *m_prev;
+  int            m_pos, m_end;
   Vec            m_vec;
-
-  void resample();
 
   void validate() const;
 
 public:
-  SegmentIter() = default;
-
-  SegmentIter(const Segment &curr, const Segment *prev, int end, bool atEnd);
-
-  const Vec *operator->() const {
-    validate();
-    return &m_vec;
-  }
-  const Vec &operator*() const {
+  constexpr const auto &curr() const {
     validate();
     return m_vec;
   }
 
-  SegmentIter &operator++();
+  SegmentIter(const Segment &curr, const Segment *prev, int end) :
+      m_curr(&curr),
+      m_prev(prev),
+      m_pos(0),
+      m_end(end) {}
 
-  bool operator==(const SegmentIter &) const;
-  bool operator!=(const SegmentIter &rhs) const { return !operator==(rhs); }
+  bool next();
 };
 
 struct Segment {
@@ -100,23 +93,37 @@ struct Segment {
 
   Vec sample(const Segment *prev, Scalar t) const;
 
-  SegmentIter begin(const Segment *prev, int res) const {
-    return SegmentIter(*this, prev, res, false);
+  // TODO: fix res
+  SegmentIter iter(const Segment *prev, int res) const {
+    return SegmentIter(*this, prev, res);
   }
+};
 
-  SegmentIter end(const Segment *prev, int res) const {
-    return SegmentIter(*this, prev, res, true);
-  }
+class Figure;
+
+class FigureIter {
+  std::vector<Segment>::const_iterator m_it, m_end;
+  SegmentIter                          m_curr;
+  int                                  m_res;
+
+public:
+  constexpr const auto &curr() const { return m_curr.curr(); }
+
+  FigureIter(const Figure &fig, int res);
+
+  bool next();
 };
 
 class Figure {
   std::vector<Segment> m_segs;
   bool                 m_closed = false;
 
+  Segment &put(SegmentType, Vec);
+
 public:
   constexpr auto &closed() const { return m_closed; }
 
-  Figure(Vec);
+  explicit Figure(Vec);
 
   void line(Vec);
 
@@ -124,8 +131,18 @@ public:
 
   void bezier(Vec a, Vec b, Vec v);
 
-  void close();
+  void close() { m_closed = true; }
+
+  FigureIter iter(int res) const { return FigureIter(*this, res); }
+
+  friend class FigureIter;
 };
+
+inline FigureIter::FigureIter(const Figure &fig, int res) :
+    m_it(fig.m_segs.begin()),
+    m_end(fig.m_segs.end()),
+    m_curr(m_it->iter(nullptr, res)),
+    m_res(res) {}
 
 class Path {
   std::vector<Figure> m_figs;

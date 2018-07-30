@@ -3,12 +3,11 @@
 #include "diag.hpp"
 
 namespace pth {
-void SegmentIter::resample() {
-  m_vec = m_curr->sample(m_prev, Scalar(m_pos) / Scalar(m_end));
-}
-
 void SegmentIter::validate() const {
 #if !defined(_NDEBUG)
+  if (!m_pos)
+    die("attempt to dereference before-the-beginning segment iterator");
+
   if (!m_curr) die("attempt to dereference singular segment iterator");
 
   if (m_pos > m_end)
@@ -16,42 +15,18 @@ void SegmentIter::validate() const {
 #endif
 }
 
-SegmentIter::SegmentIter(const Segment &curr,
-                         const Segment *prev,
-                         int            end,
-                         bool           atEnd) :
-    m_curr(&curr),
-    m_prev(prev),
-    m_pos(atEnd ? end + 1 : 1),
-    m_end(end) {
-  resample();
-}
-
-SegmentIter &SegmentIter::operator++() {
+bool SegmentIter::next() {
 #if !defined(_NDEBUG)
   if (m_pos > m_end) die("attempt to increment past-the-end segment iterator");
 #endif
 
   ++m_pos;
-  resample();
 
-  return *this;
-}
+  if (m_pos > m_end) return false;
 
-bool SegmentIter::operator==(const SegmentIter &rhs) const {
-  if (!m_curr && !rhs.m_curr) return true; // Both are singular
+  m_vec = m_curr->sample(m_prev, Scalar(m_pos) / Scalar(m_end));
 
-  if (!(m_curr == rhs.m_curr && m_prev == rhs.m_prev && m_end == rhs.m_end))
-#if defined(NDEBUG)
-    return false;
-#else
-    die("attempt to compare mismatched segment iterators");
-#endif
-
-  if (m_pos > m_end && rhs.m_pos > rhs.m_end)
-    return true; // Both are past-the-end
-
-  return m_pos == rhs.m_pos;
+  return true;
 }
 
 Segment::Segment(const Segment &other) : type(other.type), to(other.to) {
@@ -98,5 +73,46 @@ Vec Segment::sample(const Segment *prev, Scalar t) const {
     // clang-format on
   }
   }
+}
+
+bool FigureIter::next() {
+  while (!m_curr.next()) {
+    auto prev = &*m_it;
+
+    ++m_it;
+
+    if (m_it == m_end) return false;
+
+    m_curr = m_it->iter(prev, m_res);
+  }
+
+  return true;
+}
+
+Segment &Figure::put(SegmentType type, Vec v) {
+  return m_segs.emplace_back(type, v);
+}
+
+Figure::Figure(Vec v) { put(Begin, v); }
+
+void Figure::line(Vec v) { put(Line, v); }
+
+void Figure::arc(Vec v, Scalar r) {
+  auto &seg = put(Arc, v);
+
+  seg.arc.radius = std::abs(r);
+  seg.arc.pos    = r >= 0;
+}
+
+void Figure::bezier(Vec a, Vec b, Vec v) {
+  auto &seg = put(Bezier, v);
+
+  seg.bez.a3 = a * Scalar(3);
+  seg.bez.b3 = b * Scalar(3);
+}
+
+Path &Path::open(Vec v) {
+  m_figs.emplace_back(v);
+  return *this;
 }
 } // namespace pth

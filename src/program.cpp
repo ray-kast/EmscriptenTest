@@ -9,9 +9,9 @@
 #include <Eigen/Eigen>
 
 #include <diag.hpp>
+#include <matrixMath.hpp>
 #include <path.hpp>
 #include <transformStack.hpp>
-#include <matrixMath.hpp>
 
 #include <cegl/configInfo.hpp>
 
@@ -63,7 +63,6 @@ Program::Program(int, char **) {
   }
 
   m_triangle = cgl::Model(GL_TRIANGLES, 2);
-
   m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr);
   m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr);
 
@@ -79,21 +78,21 @@ void Program::render(double time) {
     std::vector<Eigen::Vector3f>               pos;
     std::vector<std::array<unsigned short, 3>> idx;
 
-    pth::Segment s0(pth::Begin, pth::Vec(-0.5f, -0.5f)),
-        s1(pth::Bezier, pth::Vec(0.5f, -0.5f));
+    pth::Figure fig(pth::Vec(-0.5f, -0.5f));
 
-    s1.bez.a3 = pth::Scalar(3) *
-                pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(timef)));
-    s1.bez.b3 = pth::Scalar(3) *
-                pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(timef)));
+    fig.bezier(pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(timef))),
+               pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(timef))),
+               pth::Vec(0.5f, -0.5f));
 
     pos.push_back(Eigen::Vector3f(0.0f, 0.5f, 0.0f));
 
     bool           first = true;
     unsigned short last  = 0;
 
-    for (auto it = s1.begin(&s0, 40), end = s1.end(&s0, 40); it != end; ++it) {
-      pos.push_back(Eigen::Vector3f(it->x(), it->y(), 0.0f));
+    for (auto it = fig.iter(40); it.next();) {
+      auto &&vec = it.curr();
+
+      pos.push_back(Eigen::Vector3f(vec.x(), vec.y(), 0.0f));
       auto curr = static_cast<unsigned short>(pos.size() - 1);
 
       if (first)
