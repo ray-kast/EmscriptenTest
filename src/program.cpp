@@ -10,6 +10,8 @@
 
 #include <diag.hpp>
 #include <path.hpp>
+#include <transformStack.hpp>
+#include <matrixMath.hpp>
 
 #include <cegl/configInfo.hpp>
 
@@ -71,6 +73,8 @@ Program::Program(int, char **) {
 Program::~Program() {}
 
 void Program::render(double time) {
+  auto timef = static_cast<float>(time);
+
   {
     std::vector<Eigen::Vector3f>               pos;
     std::vector<std::array<unsigned short, 3>> idx;
@@ -79,9 +83,9 @@ void Program::render(double time) {
         s1(pth::Bezier, pth::Vec(0.5f, -0.5f));
 
     s1.bez.a3 = pth::Scalar(3) *
-                pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(time)));
+                pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(timef)));
     s1.bez.b3 = pth::Scalar(3) *
-                pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(time)));
+                pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(timef)));
 
     pos.push_back(Eigen::Vector3f(0.0f, 0.5f, 0.0f));
 
@@ -90,7 +94,7 @@ void Program::render(double time) {
 
     for (auto it = s1.begin(&s0, 40), end = s1.end(&s0, 40); it != end; ++it) {
       pos.push_back(Eigen::Vector3f(it->x(), it->y(), 0.0f));
-      unsigned short curr(pos.size() - 1);
+      auto curr = static_cast<unsigned short>(pos.size() - 1);
 
       if (first)
         first = false;
@@ -131,6 +135,19 @@ void Program::render(double time) {
   {
     cgl::UseProgram  pgm(m_blit);
     cgl::SelectModel mdl(m_triangle);
+
+    TransformStack ts;
+
+    Eigen::Vector2f aspect(m_width, m_height);
+    aspect.normalize();
+
+    const float SCALE = 4.0f;
+
+    ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
+
+    ts << Eigen::AngleAxisf(timef, Eigen::Vector3f::UnitZ());
+
+    pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
 
     mdl.draw();
   }

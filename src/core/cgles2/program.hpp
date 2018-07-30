@@ -7,6 +7,8 @@
 
 #include <linear.hpp>
 
+#include "uniform.hpp"
+
 namespace cgl {
 class Shader;
 
@@ -42,7 +44,8 @@ public:
 };
 
 class UseProgram {
-  core::Linear<const Program *, nullptr> m_pgm;
+  core::Linear<const Program *, nullptr>   m_pgm;
+  std::unordered_map<std::string, Uniform> m_uniforms;
 
 public:
   UseProgram() {}
@@ -50,6 +53,8 @@ public:
   explicit UseProgram(const Program &);
 
   ~UseProgram();
+
+  Uniform &uniform(const std::string &);
 
   UseProgram &operator=(UseProgram &&) = default;
 };

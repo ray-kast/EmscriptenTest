@@ -5,12 +5,10 @@
 
 #include <diag.hpp>
 
-static double s_startTime;
+static double   s_startTime;
 static Program *s_pgm;
 
-inline double now() {
-  return emscripten_get_now() / 1e3;
-}
+inline double now() { return emscripten_get_now() / 1e3; }
 
 static void mainLoop() {
   try {

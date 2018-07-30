@@ -89,4 +89,18 @@ UseProgram::~UseProgram() {
   glUseProgram(0);
   s_using = false;
 }
+
+Uniform &UseProgram::uniform(const std::string &name) {
+  auto it = m_uniforms.find(name);
+
+  if (it == m_uniforms.end()) {
+    int id = glGetUniformLocation(m_pgm.get()->m_pgm, name.c_str());
+
+    if (id < 0) warn("bad uniform name '" + name + "'");
+
+    it = m_uniforms.emplace(name, Uniform(id)).first;
+  }
+
+  return it->second;
+}
 } // namespace cgl
