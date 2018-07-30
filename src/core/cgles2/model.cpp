@@ -5,52 +5,37 @@
 #include <diag.hpp>
 
 namespace cgl {
-void Model::loadVbuf(const void *data,
-                     std::size_t len,
-                     DataFreq    freq,
-                     DataAccess  access,
-                     GLuint      idx,
-                     GLint       size,
-                     GLenum      type,
-                     GLsizei     stride,
-                     void *      offs) {
-  assert(m_curr < m_bufs.size());
+const Buffer &Model::addVbuf(std::size_t bufId,
+                             GLuint      idx,
+                             GLint       size,
+                             GLenum      type,
+                             GLsizei     stride,
+                             void *      offs) {
+  auto &&buf = m_bufs[bufId];
 
-  {
-    BindBuffer vbo(GL_ARRAY_BUFFER, m_bufs[m_curr]);
-    vbo.data(data, len, freq, access);
-  }
+  if (!m_attribs
+           .emplace(idx,
+                    Attrib{.buf    = &buf,
+                           .size   = size,
+                           .type   = type,
+                           .stride = stride,
+                           .offs   = offs})
+           .second)
+    die("attribute array " + std::to_string(idx) + " already bound");
 
-  m_attribs.push_back(Attrib{.buf    = &m_bufs[m_curr],
-                             .idx    = idx,
-                             .size   = size,
-                             .type   = type,
-                             .stride = stride,
-                             .offs   = offs});
-
-  ++m_curr;
+  return buf;
 }
 
-void Model::loadIbuf(const void *data,
-                     std::size_t len,
-                     DataFreq    freq,
-                     DataAccess  access,
-                     GLint       size,
-                     GLenum      type,
-                     void *      offs) {
-  assert(m_curr < m_bufs.size());
+const Buffer &Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
+  auto &&buf = m_bufs[bufId];
 
-  {
-    BindBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, m_bufs[m_curr]);
-    ibo.data(data, len, freq, access);
-  }
+  if (m_ibuf) die("index buffer already set");
 
-  m_ibuf     = &m_bufs[m_curr];
-  m_ibufLen  = len / size;
+  m_ibuf     = &buf;
   m_ibufType = type;
   m_ibufOffs = offs;
 
-  ++m_curr;
+  return buf;
 }
 
 static bool s_selected = false;
@@ -62,25 +47,21 @@ SelectModel::SelectModel(const Model &model) :
 
   s_selected = true;
 
-  for (auto &attrib : model.m_attribs) {
+  for (auto &[idx, attrib] : model.m_attribs) {
     BindBuffer vbo(GL_ARRAY_BUFFER, *attrib.buf);
 
-    glVertexAttribPointer(attrib.idx,
-                          attrib.size,
-                          attrib.type,
-                          false,
-                          attrib.stride,
-                          attrib.offs);
+    glVertexAttribPointer(
+        idx, attrib.size, attrib.type, false, attrib.stride, attrib.offs);
 
-    glEnableVertexAttribArray(attrib.idx);
+    glEnableVertexAttribArray(idx);
   }
 }
 
 SelectModel::~SelectModel() {
   if (m_model.empty()) return;
 
-  for (auto &attrib : m_model.get()->m_attribs) {
-    glDisableVertexAttribArray(attrib.idx);
+  for (auto &[idx, _] : m_model.get()->m_attribs) {
+    glDisableVertexAttribArray(idx);
   }
 
   s_selected = false;

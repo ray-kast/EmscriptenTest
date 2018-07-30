@@ -17,8 +17,8 @@ public:
 
   Linear(Linear &)       = delete;
   Linear(const Linear &) = delete;
-  Linear(Linear &&rhs) : m_value(std::move(rhs.m_value)) {
-    rhs.m_value = Default;
+  Linear(Linear &&other) : m_value(std::move(other.m_value)) {
+    other.m_value = Default;
   }
 
   template <typename... TArgs>

@@ -17,7 +17,7 @@ public:
 
   ~Ptr() { XFree(m_ptr); }
 
-  auto *operator->() const { return m_ptr; }
+  auto *operator-> () const { return m_ptr; }
   auto &operator*() const { return *m_ptr; }
 
   constexpr operator T *&() { return m_ptr; }

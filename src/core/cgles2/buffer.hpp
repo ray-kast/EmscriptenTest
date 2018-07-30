@@ -40,15 +40,17 @@ public:
 
   ~BindBuffer();
 
-  void data(const void *, std::size_t, DataFreq, DataAccess);
+  void data(const void *, std::size_t, DataFreq, DataAccess = AccessDraw);
 
   template <typename T>
-  void data(const std::vector<T> &vec, DataFreq freq, DataAccess access) {
+  void data(const std::vector<T> &vec,
+            DataFreq              freq,
+            DataAccess            access = AccessDraw) {
     data(_getVecPtr(vec), sizeof(T) * vec.size(), freq, access);
   }
 
   template <typename T>
-  void data(const T &obj, DataFreq freq, DataAccess access) {
+  void data(const T &obj, DataFreq freq, DataAccess access = AccessDraw) {
     data(_getPtr(obj), sizeof(obj), freq, access);
   }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <vector>
 
 #include "buffers.hpp"
@@ -8,48 +9,40 @@ namespace cgl {
 class Model {
   struct Attrib {
     const Buffer *buf;
-    GLuint        idx;
     GLint         size;
     GLenum        type;
     GLsizei       stride;
     void *        offs;
   };
 
-  GLenum              m_mode;
-  Buffers             m_bufs;
-  std::vector<Attrib> m_attribs;
-  int                 m_curr = 0;
-  const Buffer *      m_ibuf = nullptr;
-  GLsizei             m_ibufLen;
-  GLenum              m_ibufType;
-  void *              m_ibufOffs;
+
+  GLenum                   m_mode;
+  Buffers                  m_bufs;
+  std::map<GLuint, Attrib> m_attribs;
+  const Buffer *           m_ibuf    = nullptr;
+  GLsizei                  m_ibufLen = 0;
+  GLenum                   m_ibufType;
+  void *                   m_ibufOffs;
 
 public:
   Model() {}
 
   Model(GLenum mode, GLsizei size) : m_mode(mode), m_bufs(size) {}
 
-  void loadVbuf(const void *data,
-                std::size_t len,
-                DataFreq    freq,
-                DataAccess  access,
-                GLuint      idx,
-                GLint       size,
-                GLenum      type,
-                GLsizei     stride,
-                void *      offs);
+  const Buffer &addVbuf(std::size_t bufId,
+                        GLuint      idx,
+                        GLint       size,
+                        GLenum      type,
+                        GLsizei     stride,
+                        void *      offs);
 
-  void loadIbuf(const void *data,
-                std::size_t len,
-                DataFreq    freq,
-                DataAccess  access,
-                GLint       size,
-                GLenum      type,
-                void *      offs);
+  const Buffer &addIbuf(std::size_t bufId, GLenum type, void *offs);
 
-  // TODO: add vector and pointer overloads of loadVbuf and loadIbuf
+  void ibufLen(GLsizei len) { m_ibufLen = len; }
 
   Model &operator=(Model &&) = default;
+
+  const Buffer &operator[](std::size_t i) { return m_bufs[i]; }
 
   friend class SelectModel;
 };

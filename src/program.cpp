@@ -64,27 +64,21 @@ Program::Program(int, char **) {
         // clang-format on
     };
 
-    m_triangle.loadVbuf(data,
-                        sizeof(data),
-                        cgl::FreqStatic,
-                        cgl::AccessDraw,
-                        0,
-                        3,
-                        GL_FLOAT,
-                        0,
-                        nullptr);
+    cgl::BindBuffer buf(GL_ARRAY_BUFFER,
+                        m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr));
+
+    buf.data(data, cgl::FreqStatic);
   }
 
   {
     GLushort data[]{0, 1, 2};
 
-    m_triangle.loadIbuf(data,
-                        sizeof(data),
-                        cgl::FreqStatic,
-                        cgl::AccessDraw,
-                        sizeof(*data),
-                        GL_UNSIGNED_SHORT,
-                        nullptr);
+    cgl::BindBuffer buf(GL_ARRAY_BUFFER,
+                        m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr));
+
+    buf.data(data, cgl::FreqStatic);
+
+    m_triangle.ibufLen(sizeof(data) / sizeof(*data));
   }
 
   resize(START_W, START_H);
@@ -117,6 +111,6 @@ void Program::render() {
 }
 
 void Program::resize(int width, int height) {
-  m_width = width;
+  m_width  = width;
   m_height = height;
 }
