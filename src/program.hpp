@@ -19,7 +19,9 @@ class Program {
   cegl::Context     m_ctx;
   cegl::MakeCurrent m_makeCurrent;
 
-  cgl::Material m_mat;
+  cgl::Material m_blit;
+
+  GLuint m_buf;
 
 public:
   Program(int, char **);

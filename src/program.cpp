@@ -24,7 +24,7 @@ Program::Program(int, char **) {
       EGL_ALPHA_SIZE,     EGL_DONT_CARE,
       EGL_DEPTH_SIZE,     24,
       EGL_STENCIL_SIZE,   EGL_DONT_CARE,
-      EGL_SAMPLE_BUFFERS, 0,
+      EGL_SAMPLES,        4,
       // clang-format on
   });
 
@@ -38,40 +38,50 @@ Program::Program(int, char **) {
 
   m_makeCurrent = cegl::MakeCurrent(m_surf, m_surf, m_ctx);
 
-  m_mat = cgl::Material();
+  m_blit = cgl::Material();
 
   {
-    cgl::SetupMaterial setup(m_mat);
+    cgl::SetupMaterial setup(m_blit);
 
-    setup.add(GL_VERTEX_SHADER,
-              "#version 100\n"
-
-              "attribute vec3 in_POSITION;\n"
-
-              "void main() {\n"
-              "  gl_Position = vec4(in_POSITION, 1.0);\n"
-              "}\n");
-
-    setup.add(GL_FRAGMENT_SHADER,
-              "#version 100\n"
-
-              "precision mediump float;\n"
-
-              "void main() {\n"
-              "  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-              "}\n");
+    setup.add(GL_VERTEX_SHADER, "assets/shd/blit.vert");
+    setup.add(GL_FRAGMENT_SHADER, "assets/shd/blit.frag");
 
     setup.input(0, "in_POSITION");
   }
+
+  glGenBuffers(1, &m_buf);
+
+  glBindBuffer(GL_ARRAY_BUFFER, m_buf);
+
+  GLfloat data[]{
+      // clang-format off
+       0.0f,  0.5f, 0.0f,
+      -0.5f, -0.5f, 0.0f,
+       0.5f, -0.5f, 0.0f,
+      // clang-format on
+  };
+
+  glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
 }
 
-Program::~Program() {}
+Program::~Program() { glDeleteBuffers(1, &m_buf); }
 
 bool Program::mainLoop() {
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+
   glClearColor(0.1f, 0.5f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  { cgl::UseProgram pgm(m_mat); }
+  {
+    cgl::UseProgram pgm(m_blit);
+
+    glBindBuffer(GL_ARRAY_BUFFER, m_buf);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, nullptr);
+    glEnableVertexAttribArray(0);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+  }
 
   m_surf.swap();
 

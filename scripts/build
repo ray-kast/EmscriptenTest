@@ -62,6 +62,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     tool_d: "tools",
     ruby: "ruby",
     cc: "clang",
+    cp: "cp",
     cxx: "clang++",
     emcc: "$emscripten_d/emcc",
     emcxx: "$emscripten_d/em++",
@@ -265,6 +266,10 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       *san_flags,
     ]
 
+  rule :cp,
+    command: "$cp -R $flags -- $in $out",
+    description: "cp $in $out"
+
   rule :cc,
     build: ".o",
     from: ".c",
@@ -307,16 +312,16 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     from: ".cpp",
     command: "$emcxx $emcxx_flags $cxx_diags $flags -c -o $out $in"
 
-  rule :emld,
-    info: "emlink $out",
-    command: "$emld $emld_flags $flags -o $out $in",
-    pool: :console
-
   rule :ld,
     build: "",
     from: ".o",
-    info: "link $out",
+    info: "ld $out",
     command: "$ld $ld_flags $flags -o $out $in"
+
+  rule :emld,
+    info: "emld $out",
+    command: "$emld $emld_flags $flags -o $out $in",
+    pool: :console
 
   cc_pch_files.each do |file, out|
     build out, from: file, with: :cc_pch
@@ -332,6 +337,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
 
   objs = []
   bcs = []
+  files = []
 
   set includes: [
     "$src_d/common",
@@ -352,11 +358,18 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     bcs << bc
   end
 
-  build "$bin_d/test", from: objs
+  var_glob(:src_d, "**/assets/**/*").select{|f| File.file?(expand(f)) }.each do |file|
+    out = file.sub("$src_d", "$bin_d")
+    build out, from: file, with: :cp
+    files << out
+  end
+
+  build "$bin_d/test", from: objs, imply: files
 
   build "$bin_d/test.html", from: bcs, with: :emld,
     also: ["$bin_d/test.js", "$bin_d/test.wasm"],
-    description: "emscripten test.html",
+    flags: files.flat_map{|f| ["--preload-file #{f}@#{f.sub("$bin_d", "")}"] },
+    imply: files,
     default: true
 
   phony "test", is: "$bin_d/test",
