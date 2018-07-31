@@ -88,15 +88,13 @@ struct Segment {
     } bez;
   };
 
-  Segment(SegmentType _type, Vec _to) : type(_type), to(_to) {}
+  Segment(SegmentType _type, const Vec &_to) : type(_type), to(_to) {}
   Segment(const Segment &);
 
   Vec sample(const Segment *prev, Scalar t) const;
 
   // TODO: fix res
-  SegmentIter iter(const Segment *prev, int res) const {
-    return SegmentIter(*this, prev, res);
-  }
+  SegmentIter iter(const Segment *prev, int res) const;
 };
 
 class Figure;
@@ -118,18 +116,18 @@ class Figure {
   std::vector<Segment> m_segs;
   bool                 m_closed = false;
 
-  Segment &put(SegmentType, Vec);
+  Segment &put(SegmentType, const Vec &);
 
 public:
   constexpr auto &closed() const { return m_closed; }
 
-  explicit Figure(Vec);
+  explicit Figure(const Vec &);
 
-  void line(Vec);
+  void line(const Vec &);
 
-  void arc(Vec v, Scalar r);
+  void arc(const Vec &v, Scalar r);
 
-  void bezier(Vec a, Vec b, Vec v);
+  void bezier(const Vec &a, const Vec &b, const Vec &v);
 
   void close() { m_closed = true; }
 
@@ -148,29 +146,48 @@ class Path {
   std::vector<Figure> m_figs;
 
 public:
-  Figure &      curr() { return m_figs.back(); }
-  const Figure &curr() const { return m_figs.back(); }
+  constexpr const auto &figs() const { return m_figs; }
+  Figure &              curr() { return m_figs.back(); }
+  const Figure &        curr() const { return m_figs.back(); }
 
-  Path &open(Vec);
+  Path &open(const Vec &);
 
   Path &close() {
     curr().close();
     return *this;
   }
 
-  Path &line(Vec v) {
+  Path &line(const Vec &v) {
     curr().line(v);
     return *this;
   }
 
-  Path &arc(Vec v, Scalar r) {
+  Path &arc(const Vec &v, Scalar r) {
     curr().arc(v, r);
     return *this;
   }
 
-  Path &bezier(Vec a, Vec b, Vec v) {
+  Path &bezier(const Vec &a, const Vec &b, const Vec &v) {
     curr().bezier(a, b, v);
     return *this;
   }
+
+  auto begin() const { return m_figs.begin(); }
+  auto end() const { return m_figs.end(); }
 };
+
+Scalar lineVsLine1(const Vec &u, const Vec &v, const Vec &p, const Vec &q);
+
+std::pair<Scalar, Scalar> lineVsLine(const Vec &u,
+                                     const Vec &v,
+                                     const Vec &p,
+                                     const Vec &q);
+
+Vec miter(const Vec &a, const Vec &b, Scalar r);
+
+Vec miter(const Vec &a, const Vec &b, const Vec &c, Scalar r1, Scalar r2);
+
+std::pair<std::vector<Eigen::Vector3f>,
+          std::vector<std::array<std::uint16_t, 3>>>
+stroke(const Path &path, int res, float w);
 } // namespace pth

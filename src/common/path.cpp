@@ -1,5 +1,7 @@
 #include "path.hpp"
 
+#include <array>
+
 #include "diag.hpp"
 
 namespace pth {
@@ -75,6 +77,16 @@ Vec Segment::sample(const Segment *prev, Scalar t) const {
   }
 }
 
+SegmentIter Segment::iter(const Segment *prev, int res) const {
+  switch (type) {
+  case Begin:
+  case Line: res = 1; break;
+  case Arc:
+  case Bezier: break;
+  }
+  return SegmentIter(*this, prev, res);
+}
+
 bool FigureIter::next() {
   while (!m_curr.next()) {
     auto prev = &*m_it;
@@ -89,30 +101,157 @@ bool FigureIter::next() {
   return true;
 }
 
-Segment &Figure::put(SegmentType type, Vec v) {
+Segment &Figure::put(SegmentType type, const Vec &v) {
   return m_segs.emplace_back(type, v);
 }
 
-Figure::Figure(Vec v) { put(Begin, v); }
+Figure::Figure(const Vec &v) { put(Begin, v); }
 
-void Figure::line(Vec v) { put(Line, v); }
+void Figure::line(const Vec &v) { put(Line, v); }
 
-void Figure::arc(Vec v, Scalar r) {
+void Figure::arc(const Vec &v, Scalar r) {
   auto &seg = put(Arc, v);
 
   seg.arc.radius = std::abs(r);
   seg.arc.pos    = r >= 0;
 }
 
-void Figure::bezier(Vec a, Vec b, Vec v) {
+void Figure::bezier(const Vec &a, const Vec &b, const Vec &v) {
   auto &seg = put(Bezier, v);
 
   seg.bez.a3 = a * Scalar(3);
   seg.bez.b3 = b * Scalar(3);
 }
 
-Path &Path::open(Vec v) {
+Path &Path::open(const Vec &v) {
   m_figs.emplace_back(v);
   return *this;
+}
+
+Scalar lineVsLine1(const Vec &u, const Vec &v, const Vec &p, const Vec &q) {
+  Vec d = p - u;
+
+  return (q.y() * d.x() - q.x() * d.y()) / (q.y() * v.x() - q.x() * v.y());
+}
+
+std::pair<Scalar, Scalar> lineVsLine(const Vec &u,
+                                     const Vec &v,
+                                     const Vec &p,
+                                     const Vec &q) {
+  Vec d = p - u;
+
+  Scalar s = (q.y() * d.x() - q.x() * d.y()) / (q.y() * v.x() - q.x() * v.y()),
+         t = std::abs(q.x()) > std::abs(q.y()) ? (s * v.x() - d.x()) / q.x()
+                                               : (s * v.y() - d.y()) / q.y();
+
+
+  return std::pair(s, t);
+}
+
+Vec miter(const Vec &a, const Vec &b, Scalar r) {
+  Vec ortho = a - b;
+  ortho.reverseInPlace();
+  ortho = ortho.cwiseProduct(Vec(-1, 1)).eval();
+  ortho.normalize();
+  return r * ortho;
+}
+
+Vec miter(const Vec &a, const Vec &b, const Vec &c, Scalar r, Scalar s) {
+  Vec aOffs = a + miter(a, b, r), ab = b - a;
+
+  return aOffs + ab * lineVsLine1(aOffs, ab, c - miter(c, b, s), b - c) - b;
+}
+
+std::pair<std::vector<Eigen::Vector3f>,
+          std::vector<std::array<std::uint16_t, 3>>>
+stroke(const Path &path, int res, float w) {
+  std::vector<Eigen::Vector3f>              pos;
+  std::vector<std::array<std::uint16_t, 3>> idx;
+
+  for (auto fig : path) {
+    auto it = fig.iter(res);
+
+    int i = 0, i0 = pos.size();
+    Vec a, b, v0, v1;
+
+    while (it.next()) {
+      auto vec = it.curr();
+
+      switch (i) {
+      case 0: v0 = vec; goto next;
+      case 1:
+        v1 = vec;
+        a  = miter(b, vec, w);
+        break;
+      default: a = miter(a, b, vec, w, w); break;
+      }
+
+      {
+        Vec v = b - a;
+        pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+        v = b + a;
+        pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+
+        std::uint16_t ii = static_cast<std::uint16_t>(i0 + i + i);
+
+        idx.push_back(
+            std::array<std::uint16_t, 3>{{static_cast<std::uint16_t>(ii - 2),
+                                          static_cast<std::uint16_t>(ii - 1),
+                                          static_cast<std::uint16_t>(ii + 1)}});
+        idx.push_back(
+            std::array<std::uint16_t, 3>{{static_cast<std::uint16_t>(ii + 1),
+                                          ii,
+                                          static_cast<std::uint16_t>(ii - 2)}});
+      }
+
+    next:
+      ++i;
+      a = b;
+      b = vec;
+    }
+
+    if (fig.closed()) {
+      Vec v;
+
+      if (i > 0) {
+        a = miter(a, b, v0, w, w);
+
+        v = b - a;
+        pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+        v = b + a;
+        pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+
+        std::uint16_t ii = static_cast<std::uint16_t>(i0 + i + i);
+
+        idx.push_back(
+            std::array<std::uint16_t, 3>{{static_cast<std::uint16_t>(ii - 2),
+                                          static_cast<std::uint16_t>(ii - 1),
+                                          static_cast<std::uint16_t>(i0 + 1)}});
+        idx.push_back(
+            std::array<std::uint16_t, 3>{{static_cast<std::uint16_t>(i0 + 1),
+                                          static_cast<std::uint16_t>(i0),
+                                          static_cast<std::uint16_t>(ii - 2)}});
+      }
+
+      if (i > 1) {
+        a = miter(b, v0, v1, w, w);
+
+        v              = v0 - a;
+        pos.at(i0)     = Eigen::Vector3f(v.x(), v.y(), 0.0f);
+        v              = v0 + a;
+        pos.at(i0 + 1) = Eigen::Vector3f(v.x(), v.y(), 0.0f);
+      }
+    }
+    else {
+      a = miter(a, b, w);
+
+      Vec v = b - a;
+      pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+      v = b + a;
+      pos.emplace_back(Eigen::Vector3f(v.x(), v.y(), 0.0f));
+    }
+  }
+
+  return std::make_pair(pos, idx);
 }
 } // namespace pth

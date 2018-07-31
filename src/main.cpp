@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 
         break;
       }
-      case KeyPress: break;
+      case KeyPress: goto stop;
       case ClientMessage: {
         auto &&evt = xev.xclient;
 

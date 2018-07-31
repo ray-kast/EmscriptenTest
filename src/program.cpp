@@ -75,33 +75,14 @@ void Program::render(double time) {
   auto timef = static_cast<float>(time);
 
   {
-    std::vector<Eigen::Vector3f>               pos;
-    std::vector<std::array<unsigned short, 3>> idx;
+    pth::Path path;
 
-    pth::Figure fig(pth::Vec(-0.5f, -0.5f));
+    path.open(pth::Vec(-0.75f, 0.0f))
+        .bezier(pth::Vec(-0.35f, pth::lerp(0.0f, 0.5f, std::sin(timef))),
+                pth::Vec(0.35f, pth::lerp(0.0f, 0.5f, std::cos(timef))),
+                pth::Vec(0.75f, 0.0f));
 
-    fig.bezier(pth::Vec(-0.25f, pth::lerp(-0.25f, -0.75f, std::sin(timef))),
-               pth::Vec(0.25f, pth::lerp(-0.25f, -0.75f, std::cos(timef))),
-               pth::Vec(0.5f, -0.5f));
-
-    pos.push_back(Eigen::Vector3f(0.0f, 0.5f, 0.0f));
-
-    bool           first = true;
-    unsigned short last  = 0;
-
-    for (auto it = fig.iter(40); it.next();) {
-      auto &&vec = it.curr();
-
-      pos.push_back(Eigen::Vector3f(vec.x(), vec.y(), 0.0f));
-      auto curr = static_cast<unsigned short>(pos.size() - 1);
-
-      if (first)
-        first = false;
-      else
-        idx.push_back({0, last, curr});
-
-      last = curr;
-    }
+    auto [pos, idx] = pth::stroke(path, 40, 0.1f);
 
     {
       cgl::BindBuffer buf(GL_ARRAY_BUFFER, m_triangle[0]);
@@ -144,7 +125,7 @@ void Program::render(double time) {
 
     ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
 
-    ts << Eigen::AngleAxisf(timef, Eigen::Vector3f::UnitZ());
+    ts << Eigen::AngleAxisf(timef / 4.0f, Eigen::Vector3f::UnitZ());
 
     pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
 
