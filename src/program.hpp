@@ -8,9 +8,9 @@
 #include <cegl/makeCurrent.hpp>
 #include <cegl/surface.hpp>
 
-#include <cgles2/buffers.hpp>
 #include <cgles2/material.hpp>
 #include <cgles2/model.hpp>
+#include <cgles2/textures.hpp>
 
 class Program {
   cx::Display m_xDisp;
@@ -23,7 +23,9 @@ class Program {
 
   cgl::Material m_blit;
 
-  cgl::Model m_triangle;
+  cgl::Model m_bkgdQuad, m_triangle;
+
+  cgl::Textures m_red;
 
   unsigned int m_width, m_height;
 

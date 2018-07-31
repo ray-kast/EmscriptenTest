@@ -26,4 +26,16 @@ BindTexture::~BindTexture() {
   glBindTexture(m_target, 0);
   s_bound.at(m_unit).erase(m_target);
 }
+
+void BindTexture::image(GLint       lvl,
+                        GLint       internalFormat,
+                        GLsizei     width,
+                        GLsizei     height,
+                        GLint       border,
+                        GLenum      format,
+                        GLenum      type,
+                        const void *data) {
+  glTexImage2D(
+      m_target, lvl, internalFormat, width, height, border, format, type, data);
+}
 } // namespace cgl

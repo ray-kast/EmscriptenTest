@@ -15,6 +15,8 @@
 
 #include <cegl/configInfo.hpp>
 
+#include <models.hpp>
+
 Program::Program(int, char **) {
   const unsigned int START_W = 640, START_H = 480;
 
@@ -51,6 +53,8 @@ Program::Program(int, char **) {
 
   m_makeCurrent = cegl::MakeCurrent(m_surf, m_surf, m_ctx);
 
+  // Material setup
+
   m_blit = cgl::Material();
 
   {
@@ -60,11 +64,27 @@ Program::Program(int, char **) {
     setup.add(GL_FRAGMENT_SHADER, "assets/shd/blit.frag");
 
     setup.input(0, "in_POSITION");
+    setup.input(1, "in_COLOR");
+    setup.input(2, "in_UV0");
   }
+
+  // Model setup
+
+  mdl::blitQuad(m_bkgdQuad, 1.0f, Eigen::Vector3f(1.0f, 1.0f, 1.0f));
 
   m_triangle = cgl::Model(GL_TRIANGLES, 2);
   m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr);
   m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr);
+
+  // Texture setup
+
+  m_red = cgl::Textures(1);
+
+  {
+    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
+
+    tex.color(Eigen::Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
+  }
 
   resize(START_W, START_H);
 }
@@ -73,6 +93,33 @@ Program::~Program() {}
 
 void Program::render(double time) {
   auto timef = static_cast<float>(time);
+
+  glViewport(0, 0, m_width, m_height);
+
+  glClearColor(0.1f, 0.5f, 1.0f, 1.0f);
+  glClearDepthf(1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+
+  {
+    cgl::UseProgram pgm(m_blit);
+    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
+
+    pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
+    pgm.uniform("u_S2D_TEXTURE").set(0);
+
+    cgl::SelectModel(m_bkgdQuad).draw();
+  }
+
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glCullFace(GL_BACK);
+  glDepthFunc(GL_LESS);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   {
     pth::Path path;
@@ -99,22 +146,9 @@ void Program::render(double time) {
     }
   }
 
-  glEnable(GL_CULL_FACE);
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glCullFace(GL_BACK);
-  glDepthFunc(GL_LESS);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glClearColor(0.1f, 0.5f, 1.0f, 1.0f);
-  glClearDepthf(1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  glViewport(0, 0, m_width, m_height);
-
   {
     cgl::UseProgram  pgm(m_blit);
-    cgl::SelectModel mdl(m_triangle);
+    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
 
     TransformStack ts;
 
@@ -129,7 +163,7 @@ void Program::render(double time) {
 
     pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
 
-    mdl.draw();
+    cgl::SelectModel(m_triangle).draw();
   }
 
   m_surf.swap();
