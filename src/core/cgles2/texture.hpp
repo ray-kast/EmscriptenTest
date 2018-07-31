@@ -1,0 +1,37 @@
+#pragma once
+
+#include <GLES2/gl2.h>
+
+#include <linear.hpp>
+
+namespace cgl {
+class Texture {
+  core::Linear<GLuint, 0> m_tex;
+
+  Texture(GLuint tex) : m_tex(tex) {}
+
+public:
+  Texture() {}
+
+  friend class Textures;
+  friend class BindTexture;
+  friend class BindFramebuffer;
+};
+
+class BindTexture {
+  core::Linear<GLenum, 0> m_target;
+  const Texture *         m_tex;
+  GLenum                  m_unit;
+
+public:
+  BindTexture() {}
+
+  BindTexture(GLenum unit, GLenum target, const Texture &);
+
+  ~BindTexture();
+
+  BindTexture &operator=(BindTexture &&) = default;
+
+  friend class BindFramebuffer;
+};
+} // namespace cgl

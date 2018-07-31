@@ -1,9 +1,5 @@
 #include "buffers.hpp"
 
-#include <GLES2/gl2ext.h>
-
-#include <diag.hpp> // TODO: remove
-
 namespace cgl {
 Buffers::Buffers(GLsizei size) : m_size(size), m_bufs(new GLuint[size]) {
   glGenBuffers(size, m_bufs);

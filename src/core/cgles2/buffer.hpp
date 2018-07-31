@@ -31,7 +31,7 @@ public:
 };
 
 class BindBuffer {
-  core::Linear<GLuint, 0> m_target;
+  core::Linear<GLenum, 0> m_target;
 
 public:
   BindBuffer() {}
