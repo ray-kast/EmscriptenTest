@@ -10,7 +10,7 @@
 
 #include <cgles2/material.hpp>
 #include <cgles2/model.hpp>
-#include <cgles2/textures.hpp>
+#include <cgles2/textureUnits.hpp>
 
 class Program {
   cx::Display m_xDisp;
@@ -25,7 +25,7 @@ class Program {
 
   cgl::Model m_bkgdQuad, m_triangle;
 
-  cgl::Textures m_red;
+  cgl::TextureUnits m_red;
 
   unsigned int m_width, m_height;
 

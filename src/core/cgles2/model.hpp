@@ -47,7 +47,6 @@ public:
   friend class SelectModel;
 };
 
-// TODO: this isn't linear
 class SelectModel {
   core::Linear<const Model *, nullptr> m_model;
   BindBuffer                           m_ibo;

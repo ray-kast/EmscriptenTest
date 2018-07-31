@@ -78,10 +78,10 @@ Program::Program(int, char **) {
 
   // Texture setup
 
-  m_red = cgl::Textures(1);
+  m_red = cgl::TextureUnits(1);
 
   {
-    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
+    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red.addTex(0, 0, GL_TEXTURE_2D));
 
     tex.color(Eigen::Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
   }
@@ -105,8 +105,8 @@ void Program::render(double time) {
   glDisable(GL_BLEND);
 
   {
-    cgl::UseProgram pgm(m_blit);
-    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
+    cgl::UseProgram         pgm(m_blit);
+    cgl::SelectTextureUnits tex(m_red);
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
@@ -147,8 +147,8 @@ void Program::render(double time) {
   }
 
   {
-    cgl::UseProgram  pgm(m_blit);
-    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red[0]);
+    cgl::UseProgram         pgm(m_blit);
+    cgl::SelectTextureUnits tex(m_red);
 
     TransformStack ts;
 

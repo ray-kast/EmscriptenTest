@@ -38,15 +38,9 @@ const Buffer &Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
   return buf;
 }
 
-static bool s_selected = false;
-
 SelectModel::SelectModel(const Model &model) :
     m_model(&model),
     m_ibo(GL_ELEMENT_ARRAY_BUFFER, *model.m_ibuf) {
-  if (s_selected) die("model already selected");
-
-  s_selected = true;
-
   for (auto &[idx, attrib] : model.m_attribs) {
     BindBuffer vbo(GL_ARRAY_BUFFER, *attrib.buf);
 
@@ -60,11 +54,8 @@ SelectModel::SelectModel(const Model &model) :
 SelectModel::~SelectModel() {
   if (m_model.empty()) return;
 
-  for (auto &[idx, _] : m_model.get()->m_attribs) {
+  for (auto &[idx, _] : m_model.get()->m_attribs)
     glDisableVertexAttribArray(idx);
-  }
-
-  s_selected = false;
 }
 
 void SelectModel::draw() {
