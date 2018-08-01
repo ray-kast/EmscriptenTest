@@ -5,12 +5,12 @@
 #include <diag.hpp>
 
 namespace cgl {
-const Buffer &Model::addVbuf(std::size_t bufId,
-                             GLuint      idx,
-                             GLint       size,
-                             GLenum      type,
-                             GLsizei     stride,
-                             void *      offs) {
+BindBuffer Model::addVbuf(std::size_t bufId,
+                          GLuint      idx,
+                          GLint       size,
+                          GLenum      type,
+                          GLsizei     stride,
+                          void *      offs) {
   auto &&buf = m_bufs[bufId];
 
   if (!m_attribs
@@ -23,10 +23,10 @@ const Buffer &Model::addVbuf(std::size_t bufId,
            .second)
     die("attribute array " + std::to_string(idx) + " already bound");
 
-  return buf;
+  return BindBuffer(GL_ARRAY_BUFFER, buf);
 }
 
-const Buffer &Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
+BindBuffer Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
   auto &&buf = m_bufs[bufId];
 
   if (m_ibuf) die("index buffer already set");
@@ -35,7 +35,15 @@ const Buffer &Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
   m_ibufType = type;
   m_ibufOffs = offs;
 
-  return buf;
+  return BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
+}
+
+BindBuffer Model::bindVbuf(GLuint idx) const {
+  return BindBuffer(GL_ARRAY_BUFFER, *m_attribs.at(idx).buf);
+}
+
+BindBuffer Model::bindIbuf() const {
+  return BindBuffer(GL_ELEMENT_ARRAY_BUFFER, *m_ibuf);
 }
 
 SelectModel::SelectModel(const Model &model) :

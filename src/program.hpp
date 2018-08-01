@@ -25,7 +25,7 @@ class Program {
 
   cgl::Model m_bkgdQuad, m_worm;
 
-  cgl::TextureUnits m_white, m_wood;
+  cgl::TextureUnits m_white, m_wood, m_concrete;
 
   unsigned int m_width, m_height;
 

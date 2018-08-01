@@ -81,17 +81,15 @@ Program::Program(int, char **) {
   // Texture setup
 
   m_white = cgl::TextureUnits(1);
-
-  cgl::BindTexture(0, GL_TEXTURE_2D, m_white.addTex(0, 0, GL_TEXTURE_2D))
+  m_white.addTex(0, 0, GL_TEXTURE_2D)
       .color(Eigen::Vector4f(1.0f, 1.0f, 1.0f, 1.0f));
 
   m_wood = cgl::TextureUnits(1);
+  m_wood.addTex(0, 0, GL_TEXTURE_2D).loadImage(0, "assets/tex/wood.jpg");
 
-  {
-    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_wood.addTex(0, 0, GL_TEXTURE_2D));
-
-    tex.loadImage(0, "assets/tex/wood.jpg");
-  }
+  m_concrete = cgl::TextureUnits(1);
+  m_concrete.addTex(0, 0, GL_TEXTURE_2D)
+      .loadImage(0, "assets/tex/concrete.jpg");
 
   resize(START_W, START_H);
 }
@@ -146,7 +144,7 @@ void Program::render(double time) {
 
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_wood);
+    cgl::SelectTextureUnits tex(m_concrete);
 
     TransformStack ts;
 

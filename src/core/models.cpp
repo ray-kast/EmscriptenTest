@@ -13,12 +13,11 @@ void blitQuad(cgl::Model &           model,
   float           uv0[4][2]{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
   unsigned short  idx[2][3]{{0, 1, 3}, {3, 2, 0}};
 
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[0]).data(pos, freq, access);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[1]).data(clr, freq, access);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[2]).data(uv0, freq, access);
+  model.bindVbuf(0).data(pos, freq, access);
+  model.bindVbuf(1).data(clr, freq, access);
+  model.bindVbuf(2).data(uv0, freq, access);
 
-  cgl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, model[3]).data(idx, freq, access);
-
+  model.bindIbuf().data(idx, freq, access);
   model.ibufLen(sizeof(idx) / sizeof(**idx));
 }
 
@@ -41,12 +40,11 @@ void strokePath(cgl::Model &           model,
     // uv0[i].setZero();
   }
 
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[0]).data(pos, freq, access);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[1]).data(clr, freq, access);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model[2]).data(uv0, freq, access);
+  model.bindVbuf(0).data(pos, freq, access);
+  model.bindVbuf(1).data(clr, freq, access);
+  model.bindVbuf(2).data(uv0, freq, access);
 
-  cgl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, model[3]).data(idx, freq, access);
-
+  model.bindIbuf().data(idx, freq, access);
   model.ibufLen(idx.size() * 3);
 }
 } // namespace mdl

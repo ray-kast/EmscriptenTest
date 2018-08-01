@@ -3,15 +3,21 @@
 #include <diag.hpp>
 
 namespace cgl {
-const Texture &TextureUnits::addTex(std::size_t texId,
-                                    GLenum      unit,
-                                    GLenum      target) {
+BindTexture TextureUnits::addTex(std::size_t texId,
+                                 GLenum      unit,
+                                 GLenum      target) {
   auto &&tex = m_texs[texId];
 
   if (!m_bindings.emplace(unit, Binding{.tex = &tex, .target = target}).second)
-    die("texture unit " + std::to_string(unit) + " already bound");
+    die("binding for texture unit " + std::to_string(unit) +
+        " already created");
 
-  return tex;
+  return BindTexture(unit, target, tex);
+}
+
+BindTexture TextureUnits::bindTex(GLenum unit) const {
+  auto &&bind = m_bindings.at(unit);
+  return BindTexture(unit, bind.target, *bind.tex);
 }
 
 SelectTextureUnits::SelectTextureUnits(const TextureUnits &units) :

@@ -20,11 +20,11 @@ public:
 
   TextureUnits(GLsizei size) : m_texs(size) {}
 
-  const Texture &addTex(std::size_t texId, GLenum unit, GLenum target);
+  BindTexture addTex(std::size_t texId, GLenum unit, GLenum target);
+
+  BindTexture bindTex(GLenum unit) const;
 
   TextureUnits &operator=(TextureUnits &&) = default;
-
-  const Texture &operator[](std::size_t i) { return m_texs[i]; }
 
   friend class SelectTextureUnits;
 };
