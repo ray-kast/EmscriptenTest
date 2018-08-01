@@ -26,6 +26,8 @@ class BindTexture {
   const Texture *         m_tex;
   GLenum                  m_unit;
 
+  void activate();
+
 public:
   BindTexture() {}
 

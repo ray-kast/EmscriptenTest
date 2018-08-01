@@ -14,6 +14,8 @@
 namespace cgl {
 static std::unordered_map<GLenum, std::unordered_set<GLenum>> s_bound;
 
+void BindTexture::activate() { glActiveTexture(GL_TEXTURE0 + m_unit); }
+
 BindTexture::BindTexture(GLenum unit, GLenum target, const Texture &tex) :
     m_target(target),
     m_tex(&tex),
@@ -22,13 +24,13 @@ BindTexture::BindTexture(GLenum unit, GLenum target, const Texture &tex) :
     die("texture type " + std::to_string(target) + " already bound in unit " +
         std::to_string(m_unit) + ".");
 
-  glActiveTexture(GL_TEXTURE0 + m_unit);
+  activate();
   glBindTexture(target, tex.m_tex);
 }
 
 BindTexture::~BindTexture() {
   if (m_target.empty()) return;
-  glActiveTexture(m_unit);
+  activate();
   glBindTexture(m_target, 0);
   s_bound.at(m_unit).erase(m_target);
 }
@@ -39,7 +41,7 @@ void BindTexture::image(GLint       lvl,
                         GLenum      format,
                         GLenum      type,
                         const void *data) {
-  glActiveTexture(m_unit);
+  activate();
   glTexImage2D(m_target, lvl, format, width, height, 0, format, type, data);
 }
 
@@ -68,7 +70,8 @@ void BindTexture::loadImage(GLint lvl, const std::string &path) {
   info(std::to_string(isurf->w) + "x" + std::to_string(isurf->h) + " " +
        std::to_string(isurf->format->BitsPerPixel) + "-bit color");
 
-  image(lvl, 1, 1, format, GL_UNSIGNED_BYTE, isurf->pixels);
+  image(lvl, isurf->w, isurf->h, format, GL_UNSIGNED_BYTE, isurf->pixels);
+  glGenerateMipmap(m_target); // TODO: this needs to be smarter
 
   SDL_UnlockSurface(isurf);
   SDL_FreeSurface(isurf);
