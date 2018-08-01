@@ -67,9 +67,6 @@ void BindTexture::loadImage(GLint lvl, const std::string &path) {
         "'");
   }
 
-  info(std::to_string(isurf->w) + "x" + std::to_string(isurf->h) + " " +
-       std::to_string(isurf->format->BitsPerPixel) + "-bit color");
-
   image(lvl, isurf->w, isurf->h, format, GL_UNSIGNED_BYTE, isurf->pixels);
   glGenerateMipmap(m_target); // TODO: this needs to be smarter
 

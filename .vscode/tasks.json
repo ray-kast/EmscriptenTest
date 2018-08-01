@@ -14,20 +14,6 @@
       "problemMatcher": "$gcc"
     },
     {
-      "label": "build-native",
-      "group": "build",
-      "type": "shell",
-      "command": "${workspaceRoot}/build.sh native",
-      "problemMatcher": "$gcc"
-    },
-    {
-      "label": "build-web",
-      "group": "build",
-      "type": "shell",
-      "command": "${workspaceRoot}/build.sh web",
-      "problemMatcher": "$gcc"
-    },
-    {
       "label": "clean",
       "type": "shell",
       "command": "${workspaceRoot}/build.sh -t clean",

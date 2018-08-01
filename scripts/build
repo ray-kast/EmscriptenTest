@@ -336,10 +336,6 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
 
   cxx_pch_outs = cxx_pch_files.map{|_, o| o }
 
-  objs = []
-  bcs = []
-  files = []
-
   set includes: [
     "$src_d/common",
     "$src_d/core",
@@ -347,43 +343,90 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     "$build_d"
   ].map{|i| "-I#{i}" }
 
-  var_glob(:src_d, "**/*.cpp").each do |file|
-    obj = File.change_ext(file.sub("$src_d", "$build_d"), ".o")
+  common_objs = []
+  common_bcs = []
+
+  [
+    *var_glob(:src_d, "common/**/*.cpp"),
+    *var_glob(:src_d, "core/**/*.cpp"),
+  ].each do |file|
+    build = file.sub("$src_d", "$build_d")
+
+    obj = File.change_ext(build, ".o")
     build obj, from: file,
       flags: "$includes"
-    objs << obj
+    common_objs << obj
 
-    bc = File.change_ext(file.sub("$src_d", "$build_d"), ".bc")
+    bc = File.change_ext(build, ".bc")
     build bc, from: file,
       flags: "$includes"
+    common_bcs << bc
+  end
+
+  exclude_dirs = [
+    "common",
+    "core",
+  ]
+
+  var_glob(:src_d, "*").select{|d| Dir.exist?(expand(d)) && !exclude_dirs.include?(File.basename(d)) }.each do |dir|
+    real = expand(dir)
+    name = File.basename(dir)
+    objs = []
+    bcs = []
+    files = []
+
+    Dir[File.join(real, "**/*.cpp")].each do |file|
+      src = var_rel_path(:src_d, file)
+      build = src.sub("$src_d", "$build_d")
+
+      obj = File.change_ext(build, ".o")
+      build obj, from: file,
+        flags: "$includes"
+      objs << obj
+
+      bc = File.change_ext(build, ".bc")
+      build bc, from: file,
+        flags: "$includes"
+      bcs << bc
+    end
+
+    Dir[File.join(real, "**/assets/**/*")].select{|f| File.file?(f) }.each do |file|
+      from = var_rel_path(:src_d, file)
+      out = from.sub("$src_d", "$bin_d")
+      build out, from: from, with: :cp
+      files << out
+    end
+
+    src = "$src_d/main.cpp"
+    build = src.sub("$src_d", "$build_d")
+
+    obj = File.change_ext(build, ".#{name}.o")
+    build obj, from: src,
+      flags: ["$includes", "-I#{dir}"]
+    objs << obj
+
+    bc = File.change_ext(build, ".#{name}.bc")
+    build bc, from: src,
+      flags: ["$includes", "-I#{dir}"]
     bcs << bc
+
+    outf = "$bin_d/#{name}/#{name}"
+
+    build outf, from: objs.concat(common_objs)
+
+    web_out = "#{outf}.html"
+
+    build web_out, from: bcs.concat(common_bcs), with: :emld,
+      also: %w[data js wasm].map{|x| "#{outf}.#{x}" },
+      flags: files.flat_map{|f| ["--preload-file #{f}@#{f.sub("$bin_d/#{name}", "")}"] },
+      imply: files
+
+    phony "#{name}-native", is: [outf, *files],
+      description: "build #{name} (native)",
+      default: true
+
+    phony "#{name}-web", is: web_out,
+      description: "build #{name} (web)",
+      default: true
   end
-
-  var_glob(:src_d, "**/assets/**/*").select{|f| File.file?(expand(f)) }.each do |file|
-    out = file.sub("$src_d", "$bin_d")
-    build out, from: file, with: :cp
-    files << out
-  end
-
-  build "$bin_d/test", from: objs
-
-  web_out = "$bin_d/test.html"
-
-  build web_out, from: bcs, with: :emld,
-    also: ["$bin_d/test.data", "$bin_d/test.js", "$bin_d/test.wasm"],
-    flags: files.flat_map{|f| ["--preload-file #{f}@#{f.sub("$bin_d", "")}"] },
-    imply: files,
-    default: true
-
-  phony "native", is: ["$bin_d/test", *files],
-    description: "build native",
-    default: true
-
-  phony "web", is: web_out,
-    description: "build web",
-    default: true
-
-  phony "test", is: "$bin_d/test",
-    description: "build test",
-    default: true
 end
