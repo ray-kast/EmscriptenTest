@@ -11,9 +11,9 @@ namespace mdl {
 inline void setup_basic4(cgl::Model &model) {
   model = cgl::Model(GL_TRIANGLES, 4);
 
-  model.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr);
-  model.addVbuf(1, 1, 3, GL_FLOAT, 0, nullptr);
-  model.addVbuf(2, 2, 2, GL_FLOAT, 0, nullptr);
+  model.addVbuf(0, "in_POSITION", 3, GL_FLOAT, 0, nullptr);
+  model.addVbuf(1, "in_COLOR", 3, GL_FLOAT, 0, nullptr);
+  model.addVbuf(2, "in_UV0", 2, GL_FLOAT, 0, nullptr);
   model.addIbuf(3, GL_UNSIGNED_SHORT, nullptr);
 }
 

@@ -3,6 +3,8 @@
 #include <array>
 
 namespace mdl {
+// TODO: avoid loading buffers if we're not gonna use them
+
 void blitQuad(cgl::Model &           model,
               float                  z,
               const Eigen::Vector3f &color,
@@ -13,9 +15,9 @@ void blitQuad(cgl::Model &           model,
   float           uv0[4][2]{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
   unsigned short  idx[2][3]{{0, 1, 3}, {3, 2, 0}};
 
-  model.bindVbuf(0).data(pos, freq, access);
-  model.bindVbuf(1).data(clr, freq, access);
-  model.bindVbuf(2).data(uv0, freq, access);
+  model.bindVbuf("in_POSITION").data(pos, freq, access);
+  model.bindVbuf("in_COLOR").data(clr, freq, access);
+  model.bindVbuf("in_UV0").data(uv0, freq, access);
 
   model.bindIbuf().data(idx, freq, access);
   model.ibufLen(sizeof(idx) / sizeof(**idx));
@@ -37,12 +39,11 @@ void strokePath(cgl::Model &           model,
     clr.emplace(clr.begin() + i, color);
     uv0.emplace(uv0.begin() + i,
                 pos[i].template head<2>()); // TODO: this needs work
-    // uv0[i].setZero();
   }
 
-  model.bindVbuf(0).data(pos, freq, access);
-  model.bindVbuf(1).data(clr, freq, access);
-  model.bindVbuf(2).data(uv0, freq, access);
+  model.bindVbuf("in_POSITION").data(pos, freq, access);
+  model.bindVbuf("in_COLOR").data(clr, freq, access);
+  model.bindVbuf("in_UV0").data(uv0, freq, access);
 
   model.bindIbuf().data(idx, freq, access);
   model.ibufLen(idx.size() * 3);
@@ -63,12 +64,11 @@ void fanPath(cgl::Model &           model,
     clr.emplace(clr.begin() + i, color);
     uv0.emplace(uv0.begin() + i,
                 pos[i].template head<2>()); // TODO: this needs work
-    // uv0[i].setZero();
   }
 
-  model.bindVbuf(0).data(pos, freq, access);
-  model.bindVbuf(1).data(clr, freq, access);
-  model.bindVbuf(2).data(uv0, freq, access);
+  model.bindVbuf("in_POSITION").data(pos, freq, access);
+  model.bindVbuf("in_COLOR").data(clr, freq, access);
+  model.bindVbuf("in_UV0").data(uv0, freq, access);
 
   model.bindIbuf().data(idx, freq, access);
   model.ibufLen(idx.size() * 3);

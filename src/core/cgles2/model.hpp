@@ -15,14 +15,13 @@ class Model {
     void *        offs;
   };
 
-
-  GLenum                   m_mode;
-  Buffers                  m_bufs;
-  std::map<GLuint, Attrib> m_attribs;
-  const Buffer *           m_ibuf    = nullptr;
-  GLsizei                  m_ibufLen = 0;
-  GLenum                   m_ibufType;
-  void *                   m_ibufOffs;
+  GLenum                        m_mode;
+  Buffers                       m_bufs;
+  std::map<std::string, Attrib> m_attribs;
+  const Buffer *                m_ibuf    = nullptr;
+  GLsizei                       m_ibufLen = 0;
+  GLenum                        m_ibufType;
+  void *                        m_ibufOffs;
 
 public:
   Model() {}
@@ -30,15 +29,15 @@ public:
   Model(GLenum mode, GLsizei size) : m_mode(mode), m_bufs(size) {}
 
   BindBuffer addVbuf(std::size_t bufId,
-                     GLuint      idx,
-                     GLint       size,
-                     GLenum      type,
-                     GLsizei     stride,
-                     void *      offs);
+                     const std::string &,
+                     GLint   size,
+                     GLenum  type,
+                     GLsizei stride,
+                     void *  offs);
 
   BindBuffer addIbuf(std::size_t bufId, GLenum type, void *offs);
 
-  BindBuffer bindVbuf(GLuint idx) const;
+  BindBuffer bindVbuf(const std::string &) const;
 
   BindBuffer bindIbuf() const;
 
@@ -53,6 +52,7 @@ class SelectModel {
   core::Linear<const Model *, nullptr> m_model;
   BindBuffer                           m_ibo;
   std::vector<GLuint>                  m_attribs;
+  GLuint                               m_pgm;
 
 public:
   SelectModel() {}

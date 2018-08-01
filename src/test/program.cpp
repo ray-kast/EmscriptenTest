@@ -71,6 +71,17 @@ Program::Program(int, char **) : m_particles(1024) {
     setup.input(2, "in_UV0");
   }
 
+  m_particle = cgl::Material();
+
+  {
+    cgl::SetupMaterial setup(m_particle);
+
+    setup.add(GL_VERTEX_SHADER, "assets/shd/particle.vert");
+    setup.add(GL_FRAGMENT_SHADER, "assets/shd/particle.frag");
+
+    setup.input(0, "in_POSITION");
+  }
+
   // Model setup
 
   mdl::setupBlitQuad(m_bkgdQuad);
@@ -100,13 +111,6 @@ Program::Program(int, char **) : m_particles(1024) {
   m_white = cgl::TextureUnits(1);
   m_white.addTex(0, 0, GL_TEXTURE_2D)
       .color(Eigen::Vector4f(1.0f, 1.0f, 1.0f, 1.0f));
-
-  m_wood = cgl::TextureUnits(1);
-  m_wood.addTex(0, 0, GL_TEXTURE_2D).loadImage(0, "assets/tex/wood.jpg");
-
-  m_concrete = cgl::TextureUnits(1);
-  m_concrete.addTex(0, 0, GL_TEXTURE_2D)
-      .loadImage(0, "assets/tex/concrete.jpg");
 
   resize(START_W, START_H);
 }
@@ -174,32 +178,35 @@ void Program::render(double time) {
 
   ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
 
-  Eigen::Projective3f iview = ts->inverse();
+  Eigen::Projective3f iproj = ts->inverse();
 
   while (time > m_spawnTime) {
     --spawns;
 
-
     if (m_particles[m_nextParticle].remain > 1e-3f)
       warn("killing particle " + std::to_string(m_nextParticle));
 
-    const float JITTER = 0.1f;
+    const float JITTER = 0.03f;
 
     std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
 
     float life = std::uniform_real_distribution<float>(1.0f, 3.0f)(mt);
 
     m_particles[m_nextParticle] = Particle{
-        .pos = (iview * Eigen::Vector3f(std::uniform_real_distribution<float>(
-                                            -1.0f, 1.0f)(mt),
-                                        std::uniform_real_distribution<float>(
-                                            -1.0f, 1.0f)(mt),
-                                        0.0f)
-                            .homogeneous())
-                   .hnormalized()
-                   .template head<2>(),
-        // .pos = Eigen::Vector2f(-0.77f, -0.03f) +
-        //        Eigen::Vector2f(posJitter(mt), posJitter(mt)),
+        // .pos = (iproj *
+        //         Eigen::Vector3f(
+        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(mt),
+        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(mt),
+        //             0.0f)
+        //             .homogeneous())
+        //            .hnormalized()
+        //            .template head<2>(),
+        .pos = Eigen::Vector2f(-0.77f, -0.03f) +
+               Eigen::Vector2f(posJitter(mt), posJitter(mt)),
+        .clr = Eigen::Vector3f(
+            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt),
+            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt),
+            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt)),
         .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(mt),
         .life   = life,
         .remain = life,
@@ -259,11 +266,16 @@ void Program::render(double time) {
   // Particles
 
   {
-    cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_white);
+    cgl::UseProgram         pgm(m_particle);
     cgl::SelectModel        mdl(m_circle);
 
-    pgm.uniform("u_S2D_TEXTURE").set(0);
+    pgm.uniform("u_MAT_PROJ").set(*ts, false);
+
+    ts.save()->setIdentity();
+
+    pgm.uniform("u_MAT_VIEW").set(*ts, false);
+
+    ts->setIdentity();
 
     for (int i = 0; i < m_particles.size(); ++i) {
       auto &&particle = m_particles[i];
@@ -275,14 +287,21 @@ void Program::render(double time) {
       ts.save();
 
       Eigen::Vector3f pos;
+      Eigen::Vector4f clr;
+
       pos.template head<2>() = particle.pos;
+      pos.z() = 0.0f;
+
+      clr.template head<3>() = particle.clr;
+      clr.w() = 1.0f;
 
       ts << Eigen::Translation3f(pos);
 
       ts << Eigen::UniformScaling<float>(
           pth::lerp(0.0f, particle.size, particle.remain / particle.life));
 
-      pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
+      pgm.uniform("u_MAT_WORLD").set(*ts, false);
+      pgm.uniform("u_VEC_COLOR").set(clr);
 
       mdl.draw();
 
@@ -290,6 +309,8 @@ void Program::render(double time) {
 
       particle.pos += particleField(particle.pos) * dt;
     }
+
+    ts.restore();
   }
 
   m_surf.swap();

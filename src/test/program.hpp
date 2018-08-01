@@ -14,6 +14,7 @@
 
 struct Particle {
   Eigen::Vector2f pos;
+  Eigen::Vector3f clr;
   float           size, life, remain = 0.0f;
 };
 
@@ -26,11 +27,11 @@ class Program {
   cegl::Context     m_ctx;
   cegl::MakeCurrent m_makeCurrent;
 
-  cgl::Material m_blit;
+  cgl::Material m_blit, m_particle;
 
   cgl::Model m_bkgdQuad, m_circle, m_fieldLines;
 
-  cgl::TextureUnits m_white, m_wood, m_concrete;
+  cgl::TextureUnits m_white;
 
   std::vector<Particle> m_particles;
   std::size_t           m_nextParticle = 0;

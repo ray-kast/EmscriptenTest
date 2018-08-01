@@ -5,23 +5,23 @@
 #include <diag.hpp>
 
 namespace cgl {
-BindBuffer Model::addVbuf(std::size_t bufId,
-                          GLuint      idx,
-                          GLint       size,
-                          GLenum      type,
-                          GLsizei     stride,
-                          void *      offs) {
+BindBuffer Model::addVbuf(std::size_t        bufId,
+                          const std::string &data,
+                          GLint              size,
+                          GLenum             type,
+                          GLsizei            stride,
+                          void *             offs) {
   auto &&buf = m_bufs[bufId];
 
   if (!m_attribs
-           .emplace(idx,
+           .emplace(data,
                     Attrib{.buf    = &buf,
                            .size   = size,
                            .type   = type,
                            .stride = stride,
                            .offs   = offs})
            .second)
-    die("attribute array " + std::to_string(idx) + " already bound");
+    die("attribute array for " + data + " already bound");
 
   return BindBuffer(GL_ARRAY_BUFFER, buf);
 }
@@ -38,8 +38,8 @@ BindBuffer Model::addIbuf(std::size_t bufId, GLenum type, void *offs) {
   return BindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf);
 }
 
-BindBuffer Model::bindVbuf(GLuint idx) const {
-  return BindBuffer(GL_ARRAY_BUFFER, *m_attribs.at(idx).buf);
+BindBuffer Model::bindVbuf(const std::string &data) const {
+  return BindBuffer(GL_ARRAY_BUFFER, *m_attribs.at(data).buf);
 }
 
 BindBuffer Model::bindIbuf() const {
@@ -49,8 +49,19 @@ BindBuffer Model::bindIbuf() const {
 SelectModel::SelectModel(const Model &model) :
     m_model(&model),
     m_ibo(GL_ELEMENT_ARRAY_BUFFER, *model.m_ibuf) {
-  for (auto &[idx, attrib] : model.m_attribs) {
+  GLint pgm;
+  glGetIntegerv(GL_CURRENT_PROGRAM, &pgm);
+
+  if (!pgm) die("cannot select a model without an active program");
+
+  m_pgm = pgm;
+
+  for (auto &[data, attrib] : model.m_attribs) {
     BindBuffer vbo(GL_ARRAY_BUFFER, *attrib.buf);
+
+    GLint idx = glGetAttribLocation(pgm, data.c_str());
+
+    if (idx < 0) continue;
 
     glVertexAttribPointer(
         idx, attrib.size, attrib.type, false, attrib.stride, attrib.offs);
@@ -62,8 +73,11 @@ SelectModel::SelectModel(const Model &model) :
 SelectModel::~SelectModel() {
   if (m_model.empty()) return;
 
-  for (auto &[idx, _] : m_model.get()->m_attribs)
+  for (auto &[data, _] : m_model.get()->m_attribs) {
+    GLuint idx = glGetAttribLocation(m_pgm, data.c_str());
+
     glDisableVertexAttribArray(idx);
+  }
 }
 
 void SelectModel::draw() {
