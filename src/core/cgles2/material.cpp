@@ -9,13 +9,9 @@ SetupMaterial::SetupMaterial(Material &mat) : m_mat(&mat) {
   mat.m_pgm = Program::create();
 }
 
-static std::string s_exeDir;
-
 SetupMaterial::~SetupMaterial() {
   for (auto it = m_shaders.begin(), end = m_shaders.end(); it != end; ++it) {
-    if (s_exeDir.empty()) s_exeDir = getExeDir();
-
-    it->second.first.source(readFile(s_exeDir + it->second.second));
+    it->second.first.source(readFile(getExeDir() + it->second.second));
     it->second.first.compile();
   }
 

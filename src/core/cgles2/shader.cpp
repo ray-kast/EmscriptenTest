@@ -38,7 +38,11 @@ void Shader::compile() {
   GLint success;
   glGetShaderiv(m_shd, GL_COMPILE_STATUS, &success);
 
-  if (!success) {
+  if (success) {
+    if (auto log = getLog(); !log.empty())
+      warn("in shader " + std::to_string(m_shd) + ": " + log);
+  }
+  else {
     err("in shader " + std::to_string(m_shd) + ": " + getLog());
     die("glCompileShader failed");
   }

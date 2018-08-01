@@ -49,16 +49,16 @@ public:
   }
 
   void image(GLint   lvl,
-             GLint   internalFormat,
              GLsizei width,
              GLsizei height,
-             GLint   border,
              GLenum  format,
              GLenum  type,
              const void *);
 
+  void loadImage(GLint lvl, const std::string &);
+
   void color(const Eigen::Vector4f &clr) {
-    image(0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_FLOAT, &clr);
+    image(0, 1, 1, GL_RGBA, GL_FLOAT, &clr);
   }
 
   BindTexture &operator=(BindTexture &&) = default;

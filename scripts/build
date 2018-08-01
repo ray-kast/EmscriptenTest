@@ -91,7 +91,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
   pkldflags = Set[]
 
   # Packages registered with pkg-config
-  %w[egl eigen3 glesv2 x11].each do |pkg|
+  %w[egl eigen3 glesv2 SDL_image x11].each do |pkg|
     cflags = Command.read("pkg-config --cflags '#{pkg}'").split(/\s+/)
 
     cflags.append(*Command.read("pkg-config --cflags-only-I '#{pkg}'").split(/\s+/)
@@ -260,6 +260,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       *ld_common_flags,
       "-O#{config(:em_optimize) ? "3" : "0"}",
       *("-s DISABLE_EXCEPTION_CATCHING=0" if config(:em_catch_exceptions)),
+      "--use-preload-plugins",
     ],
     ld_flags: [
       *ld_common_flags,
@@ -364,12 +365,22 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     files << out
   end
 
-  build "$bin_d/test", from: objs, imply: files
+  build "$bin_d/test", from: objs
 
-  build "$bin_d/test.html", from: bcs, with: :emld,
+  web_out = "$bin_d/test.html"
+
+  build web_out, from: bcs, with: :emld,
     also: ["$bin_d/test.data", "$bin_d/test.js", "$bin_d/test.wasm"],
     flags: files.flat_map{|f| ["--preload-file #{f}@#{f.sub("$bin_d", "")}"] },
     imply: files,
+    default: true
+
+  phony "native", is: ["$bin_d/test", *files],
+    description: "build native",
+    default: true
+
+  phony "web", is: web_out,
+    description: "build web",
     default: true
 
   phony "test", is: "$bin_d/test",

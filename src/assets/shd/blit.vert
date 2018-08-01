@@ -1,11 +1,11 @@
 #version 100
 
-varying in vec3 in_POSITION;
-varying in vec3 in_COLOR;
-varying in vec2 in_UV0;
+attribute vec3 in_POSITION;
+attribute vec3 in_COLOR;
+attribute vec2 in_UV0;
 
-varying out vec3 vf_COLOR;
-varying out vec2 vf_UV0;
+varying vec3 vf_COLOR;
+varying vec2 vf_UV0;
 
 uniform mat4 u_MAT_TRANSFORM;
 

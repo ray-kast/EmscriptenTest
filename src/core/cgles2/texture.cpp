@@ -3,6 +3,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <SDL/SDL_image.h>
+
+#include <fileUtils.hpp>
+#include <getPtr.hpp>
+#include <matrixMath.hpp>
+
 #include <diag.hpp>
 
 namespace cgl {
@@ -28,14 +34,43 @@ BindTexture::~BindTexture() {
 }
 
 void BindTexture::image(GLint       lvl,
-                        GLint       internalFormat,
                         GLsizei     width,
                         GLsizei     height,
-                        GLint       border,
                         GLenum      format,
                         GLenum      type,
                         const void *data) {
-  glTexImage2D(
-      m_target, lvl, internalFormat, width, height, border, format, type, data);
+  glActiveTexture(m_unit);
+  glTexImage2D(m_target, lvl, format, width, height, 0, format, type, data);
+}
+
+// TODO: Write SDL wrapper code
+void BindTexture::loadImage(GLint lvl, const std::string &path) {
+  std::string realpath = getExeDir() + path;
+  auto        isurf    = IMG_Load(realpath.c_str());
+
+  if (!isurf) die("IMG_Load failed for path '" + path + "'");
+
+  if (SDL_LockSurface(isurf)) die("SDL_LockSurface failed");
+
+  GLenum format;
+
+  switch (isurf->format->BytesPerPixel) {
+  case 1: format = GL_LUMINANCE; break;
+  case 2: format = GL_LUMINANCE_ALPHA; break;
+  case 3: format = GL_RGB; break;
+  case 4: format = GL_RGBA; break;
+  default:
+    die("bad byte-per-pixel value " +
+        std::to_string(isurf->format->BytesPerPixel) + " for image '" + path +
+        "'");
+  }
+
+  info(std::to_string(isurf->w) + "x" + std::to_string(isurf->h) + " " +
+       std::to_string(isurf->format->BitsPerPixel) + "-bit color");
+
+  image(lvl, 1, 1, format, GL_UNSIGNED_BYTE, isurf->pixels);
+
+  SDL_UnlockSurface(isurf);
+  SDL_FreeSurface(isurf);
 }
 } // namespace cgl

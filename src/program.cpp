@@ -83,7 +83,7 @@ Program::Program(int, char **) {
   {
     cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red.addTex(0, 0, GL_TEXTURE_2D));
 
-    tex.color(Eigen::Vector4f(1.0f, 0.0f, 0.0f, 1.0f));
+    tex.loadImage(0, "assets/tex/wood.jpg");
   }
 
   resize(START_W, START_H);

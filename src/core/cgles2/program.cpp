@@ -53,7 +53,11 @@ void Program::link() {
   GLint success;
   glGetProgramiv(m_pgm, GL_LINK_STATUS, &success);
 
-  if (!success) {
+  if (success) {
+    if (auto log = getLog(); !log.empty())
+      warn("in program " + std::to_string(m_pgm) + ": " + log);
+  }
+  else {
     err("in program " + std::to_string(m_pgm) + ": " + getLog());
     die("glLinkProgram failed");
   }
