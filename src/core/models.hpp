@@ -34,4 +34,13 @@ void strokePath(cgl::Model &,
                 const Eigen::Vector3f &clr,
                 cgl::DataFreq,
                 cgl::DataAccess = cgl::AccessDraw);
+
+inline void setupFanPath(cgl::Model &model) { setup_basic4(model); }
+
+void fanPath(cgl::Model &,
+             const pth::Path &,
+             int                    res,
+             const Eigen::Vector3f &clr,
+             cgl::DataFreq,
+             cgl::DataAccess = cgl::AccessDraw);
 } // namespace mdl

@@ -190,4 +190,8 @@ Vec miter(const Vec &a, const Vec &b, const Vec &c, Scalar r1, Scalar r2);
 std::pair<std::vector<Eigen::Vector3f>,
           std::vector<std::array<std::uint16_t, 3>>>
 stroke(const Path &path, int res, float w);
+
+std::pair<std::vector<Eigen::Vector3f>,
+          std::vector<std::array<std::uint16_t, 3>>>
+fan(const Path &path, int res);
 } // namespace pth

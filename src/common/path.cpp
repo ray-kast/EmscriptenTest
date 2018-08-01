@@ -254,4 +254,73 @@ stroke(const Path &path, int res, float w) {
 
   return std::make_pair(pos, idx);
 }
+
+std::pair<std::vector<Eigen::Vector3f>,
+          std::vector<std::array<std::uint16_t, 3>>>
+fan(const Path &path, int res) {
+  std::vector<Eigen::Vector3f>              pos;
+  std::vector<std::array<std::uint16_t, 3>> idx;
+
+  for (auto fig : path) {
+    if (!fig.closed()) {
+#if !defined(_NDEBUG)
+      warn("path passed to shape() has non-closed figure");
+#endif
+
+      continue;
+    }
+
+    auto it = fig.iter(res);
+
+    std::uint16_t i0 = pos.size();
+
+    pos.push_back(Eigen::Vector3f(0, 0, 0)); // Will be replaced
+
+    int    i        = 0;
+    Scalar sgnA     = 0;
+    Vec    centroid = Vec::Zero(), a, v0;
+
+    while (it.next()) {
+      Vec vec = it.curr();
+
+      pos.push_back(Eigen::Vector3f(vec.x(), vec.y(), 0.0f));
+
+      if (i) {
+        idx.push_back(std::array<std::uint16_t, 3>{
+            {i0,
+             static_cast<std::uint16_t>(i0 + i),
+             static_cast<std::uint16_t>(i0 + i + 1)}});
+
+        Scalar cross = (a.x() * vec.y() - vec.x() * a.y());
+
+        centroid += (a + vec) * cross;
+        sgnA += cross;
+      }
+      else
+        v0 = vec;
+
+      a = vec;
+      ++i;
+    }
+
+    idx.push_back(
+        std::array<std::uint16_t, 3>{{i0,
+                                      static_cast<std::uint16_t>(i0 + i),
+                                      static_cast<std::uint16_t>(i0 + 1)}});
+
+    {
+      Scalar cross = (a.x() * v0.y() - v0.x() * a.y());
+
+      centroid += (a + v0) * cross;
+      sgnA += cross;
+    }
+
+    sgnA *= 3;
+    centroid /= sgnA;
+
+    pos.at(i0) = Eigen::Vector3f(centroid.x(), centroid.y(), 0.0f);
+  }
+
+  return std::make_pair(pos, idx);
+}
 } // namespace pth

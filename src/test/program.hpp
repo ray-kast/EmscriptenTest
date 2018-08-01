@@ -23,7 +23,7 @@ class Program {
 
   cgl::Material m_blit;
 
-  cgl::Model m_bkgdQuad, m_worm;
+  cgl::Model m_bkgdQuad, m_circle;
 
   cgl::TextureUnits m_white, m_wood, m_concrete;
 

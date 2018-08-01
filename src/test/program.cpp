@@ -76,7 +76,22 @@ Program::Program(int, char **) {
                 Eigen::Vector3f(1.0f, 1.0f, 1.0f),
                 cgl::FreqStatic);
 
-  mdl::setupStrokePath(m_worm);
+  mdl::setupFanPath(m_circle);
+
+  {
+    pth::Path path;
+
+    path.open(pth::Vec(0.0f, 1.0f))
+        .arc(pth::Vec(0.0f, -1.0f), 1.0f)
+        .arc(pth::Vec(0.0f, 1.0f), 1.0f)
+        .close();
+
+    mdl::fanPath(m_circle,
+                 path,
+                 64,
+                 Eigen::Vector3f(1.0f, 1.0f, 1.0f),
+                 cgl::FreqStatic);
+  }
 
   // Texture setup
 
@@ -127,22 +142,6 @@ void Program::render(double time) {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   {
-    pth::Path path;
-
-    path.open(pth::Vec(-0.75f, 0.0f))
-        .bezier(pth::Vec(-0.35f, pth::lerp(0.0f, 0.5f, std::sin(timef))),
-                pth::Vec(0.35f, pth::lerp(0.0f, 0.5f, std::cos(timef))),
-                pth::Vec(0.75f, 0.0f));
-
-    mdl::strokePath(m_worm,
-                    path,
-                    64,
-                    0.1f,
-                    Eigen::Vector3f(1.0f, 0.75f, 0.5f),
-                    cgl::FreqDynamic);
-  }
-
-  {
     cgl::UseProgram         pgm(m_blit);
     cgl::SelectTextureUnits tex(m_concrete);
 
@@ -159,7 +158,7 @@ void Program::render(double time) {
 
     pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
 
-    cgl::SelectModel(m_worm).draw();
+    cgl::SelectModel(m_circle).draw();
   }
 
   m_surf.swap();
