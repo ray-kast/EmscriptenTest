@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <diag.hpp>
+#include <getPtr.hpp>
 
 #include "shader.hpp"
 
@@ -13,7 +14,7 @@ std::string Program::getLog() {
 
   std::vector<char> log(len);
 
-  glGetProgramInfoLog(m_pgm, len, &len, &log[0]);
+  glGetProgramInfoLog(m_pgm, len, &len, _getVecPtr(log));
 
   return std::string(log.begin(), log.end());
 }

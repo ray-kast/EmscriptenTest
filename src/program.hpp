@@ -23,9 +23,9 @@ class Program {
 
   cgl::Material m_blit;
 
-  cgl::Model m_bkgdQuad, m_triangle;
+  cgl::Model m_bkgdQuad, m_worm;
 
-  cgl::TextureUnits m_red;
+  cgl::TextureUnits m_white, m_wood;
 
   unsigned int m_width, m_height;
 

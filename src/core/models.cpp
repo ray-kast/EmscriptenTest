@@ -1,25 +1,52 @@
 #include "models.hpp"
 
-namespace mdl {
-void blitQuad(cgl::Model &model, float z, const Eigen::Vector3f &color) {
-  model = cgl::Model(GL_TRIANGLES, 4);
+#include <array>
 
+namespace mdl {
+void blitQuad(cgl::Model &           model,
+              float                  z,
+              const Eigen::Vector3f &color,
+              cgl::DataFreq          freq,
+              cgl::DataAccess        access) {
   float           pos[4][3]{{-1, -1, z}, {1, -1, z}, {-1, 1, z}, {1, 1, z}};
   Eigen::Vector3f clr[4]{color, color, color, color};
   float           uv0[4][2]{{0, 0}, {1, 0}, {0, 1}, {1, 1}};
   unsigned short  idx[2][3]{{0, 1, 3}, {3, 2, 0}};
 
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr))
-      .data(pos, cgl::FreqStatic);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model.addVbuf(1, 1, 3, GL_FLOAT, 0, nullptr))
-      .data(clr, cgl::FreqStatic);
-  cgl::BindBuffer(GL_ARRAY_BUFFER, model.addVbuf(2, 2, 2, GL_FLOAT, 0, nullptr))
-      .data(uv0, cgl::FreqStatic);
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[0]).data(pos, freq, access);
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[1]).data(clr, freq, access);
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[2]).data(uv0, freq, access);
 
-  cgl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                  model.addIbuf(3, GL_UNSIGNED_SHORT, nullptr))
-      .data(idx, cgl::FreqStatic);
+  cgl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, model[3]).data(idx, freq, access);
 
   model.ibufLen(sizeof(idx) / sizeof(**idx));
+}
+
+void strokePath(cgl::Model &           model,
+                const pth::Path &      path,
+                int                    res,
+                float                  w,
+                const Eigen::Vector3f &color,
+                cgl::DataFreq          freq,
+                cgl::DataAccess        access) {
+  auto [pos, idx] = pth::stroke(path, res, w);
+
+  std::vector<Eigen::Vector3f> clr(pos.size());
+  std::vector<Eigen::Vector2f> uv0(pos.size());
+
+  for (std::size_t i = 0; i < pos.size(); ++i) {
+    clr.emplace(clr.begin() + i, color);
+    uv0.emplace(uv0.begin() + i,
+                pos[i].template head<2>()); // TODO: this needs work
+    // uv0[i].setZero();
+  }
+
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[0]).data(pos, freq, access);
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[1]).data(clr, freq, access);
+  cgl::BindBuffer(GL_ARRAY_BUFFER, model[2]).data(uv0, freq, access);
+
+  cgl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, model[3]).data(idx, freq, access);
+
+  model.ibufLen(idx.size() * 3);
 }
 } // namespace mdl

@@ -84,7 +84,21 @@ int main(int argc, char **argv) {
 
         break;
       }
-      case KeyPress: goto stop;
+      case KeyPress: {
+        auto &&evt = xev.xkey;
+
+        char   chr;
+        KeySym _;
+
+        if (XLookupString(&evt, &chr, 1, &_, nullptr)) {
+          switch (chr) {
+          case '\x1b': goto stop;
+          case 'q': goto stop;
+          }
+        }
+
+        break;
+      }
       case ClientMessage: {
         auto &&evt = xev.xclient;
 

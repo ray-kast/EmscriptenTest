@@ -1,6 +1,7 @@
 #include "surface.hpp"
 
 #include <diag.hpp>
+#include <getPtr.hpp>
 
 #include "attribList.hpp"
 
@@ -15,7 +16,7 @@ Surface::Surface(const Display &            disp,
   m_surf          = eglCreateWindowSurface(disp.m_disp,
                                   config,
                                   win.m_win,
-                                  &attribList[0]);
+                                  _getVecPtr(attribList));
 
   if (m_surf == EGL_NO_SURFACE) die("eglCreateWindowSurface failed");
 }

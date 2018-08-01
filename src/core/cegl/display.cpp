@@ -1,6 +1,7 @@
 #include "display.hpp"
 
 #include <diag.hpp>
+#include <getPtr.hpp>
 
 #include "attribList.hpp"
 
@@ -27,7 +28,7 @@ std::vector<EGLConfig> Display::getConfigs() const {
 
   std::vector<EGLConfig> ret(count);
 
-  if (!eglGetConfigs(m_disp, &ret[0], ret.size(), &count))
+  if (!eglGetConfigs(m_disp, _getVecPtr(ret), ret.size(), &count))
     die("eglGetConfigs retrieval failed");
 
   return ret;
@@ -43,7 +44,8 @@ std::vector<EGLConfig> Display::chooseConfig(
   std::vector<EGLConfig> ret(count);
 
   auto attribList = makeAttribList(attribs);
-  if (!eglChooseConfig(m_disp, &attribList[0], &ret[0], count, &count))
+  if (!eglChooseConfig(
+          m_disp, _getVecPtr(attribList), _getVecPtr(ret), count, &count))
     die("eglChooseConfig retrieval failed");
 
   ret.resize(count);

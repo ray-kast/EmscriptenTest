@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <diag.hpp>
+#include <getPtr.hpp>
 
 namespace cgl {
 std::string Shader::getLog() {
@@ -11,7 +12,7 @@ std::string Shader::getLog() {
 
   std::vector<char> log(len);
 
-  glGetShaderInfoLog(m_shd, len, &len, &log[0]);
+  glGetShaderInfoLog(m_shd, len, &len, _getVecPtr(log));
 
   return std::string(log.begin(), log.end());
 }

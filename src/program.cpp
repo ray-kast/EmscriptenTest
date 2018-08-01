@@ -70,18 +70,25 @@ Program::Program(int, char **) {
 
   // Model setup
 
-  mdl::blitQuad(m_bkgdQuad, 1.0f, Eigen::Vector3f(1.0f, 1.0f, 1.0f));
+  mdl::setupBlitQuad(m_bkgdQuad);
+  mdl::blitQuad(m_bkgdQuad,
+                1.0f,
+                Eigen::Vector3f(1.0f, 1.0f, 1.0f),
+                cgl::FreqStatic);
 
-  m_triangle = cgl::Model(GL_TRIANGLES, 2);
-  m_triangle.addVbuf(0, 0, 3, GL_FLOAT, 0, nullptr);
-  m_triangle.addIbuf(1, GL_UNSIGNED_SHORT, nullptr);
+  mdl::setupStrokePath(m_worm);
 
   // Texture setup
 
-  m_red = cgl::TextureUnits(1);
+  m_white = cgl::TextureUnits(1);
+
+  cgl::BindTexture(0, GL_TEXTURE_2D, m_white.addTex(0, 0, GL_TEXTURE_2D))
+      .color(Eigen::Vector4f(1.0f, 1.0f, 1.0f, 1.0f));
+
+  m_wood = cgl::TextureUnits(1);
 
   {
-    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_red.addTex(0, 0, GL_TEXTURE_2D));
+    cgl::BindTexture tex(0, GL_TEXTURE_2D, m_wood.addTex(0, 0, GL_TEXTURE_2D));
 
     tex.loadImage(0, "assets/tex/wood.jpg");
   }
@@ -106,7 +113,7 @@ void Program::render(double time) {
 
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_red);
+    cgl::SelectTextureUnits tex(m_wood);
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
@@ -129,26 +136,17 @@ void Program::render(double time) {
                 pth::Vec(0.35f, pth::lerp(0.0f, 0.5f, std::cos(timef))),
                 pth::Vec(0.75f, 0.0f));
 
-    auto [pos, idx] = pth::stroke(path, 40, 0.1f);
-
-    {
-      cgl::BindBuffer buf(GL_ARRAY_BUFFER, m_triangle[0]);
-
-      buf.data(pos, cgl::FreqDynamic);
-    }
-
-    {
-      cgl::BindBuffer buf(GL_ELEMENT_ARRAY_BUFFER, m_triangle[1]);
-
-      buf.data(idx, cgl::FreqDynamic);
-
-      m_triangle.ibufLen(idx.size() * 3);
-    }
+    mdl::strokePath(m_worm,
+                    path,
+                    64,
+                    0.1f,
+                    Eigen::Vector3f(1.0f, 0.75f, 0.5f),
+                    cgl::FreqDynamic);
   }
 
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_red);
+    cgl::SelectTextureUnits tex(m_wood);
 
     TransformStack ts;
 
@@ -163,7 +161,7 @@ void Program::render(double time) {
 
     pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
 
-    cgl::SelectModel(m_triangle).draw();
+    cgl::SelectModel(m_worm).draw();
   }
 
   m_surf.swap();

@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include <diag.hpp>
+#include <getPtr.hpp>
 
 #include <cx/display.hpp>
 #include <cx/window.hpp>
@@ -16,7 +17,7 @@ Context::Context(const Surface &surf, const std::vector<EGLint> &attribs) :
   m_ctx           = eglCreateContext(surf.m_disp->m_disp,
                            surf.m_conf,
                            EGL_NO_CONTEXT,
-                           &attribList[0]);
+                           _getVecPtr(attribList));
 
   if (m_ctx == EGL_NO_CONTEXT) die("eglCreateContext failed");
 }
