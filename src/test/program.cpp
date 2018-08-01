@@ -1,6 +1,7 @@
 #include "program.hpp"
 
 #include <array>
+#include <random>
 
 #include <GLES2/gl2.h>
 
@@ -17,7 +18,9 @@
 
 #include <models.hpp>
 
-Program::Program(int, char **) {
+using namespace pth::lit;
+
+Program::Program(int, char **) : m_particles(1024) {
   const unsigned int START_W = 640, START_H = 480;
 
   m_xDisp   = cx::Display(nullptr);
@@ -73,10 +76,12 @@ Program::Program(int, char **) {
   mdl::setupBlitQuad(m_bkgdQuad);
   mdl::blitQuad(m_bkgdQuad,
                 1.0f,
-                Eigen::Vector3f(1.0f, 1.0f, 1.0f),
+                Eigen::Vector3f(0.0f, 0.0f, 0.0f),
                 cgl::FreqStatic);
 
   mdl::setupFanPath(m_circle);
+
+  mdl::setupStrokePath(m_fieldLines);
 
   {
     pth::Path path;
@@ -86,11 +91,8 @@ Program::Program(int, char **) {
         .arc(pth::Vec(0.0f, 1.0f), 1.0f)
         .close();
 
-    mdl::fanPath(m_circle,
-                 path,
-                 64,
-                 Eigen::Vector3f(1.0f, 1.0f, 1.0f),
-                 cgl::FreqStatic);
+    mdl::fanPath(
+        m_circle, path, 64, Eigen::Vector3f(1.0f, 1.0f, 1.0f), cgl::FreqStatic);
   }
 
   // Texture setup
@@ -111,12 +113,30 @@ Program::Program(int, char **) {
 
 Program::~Program() {}
 
+inline pth::Vec ortho(const pth::Vec &v) {
+  return v.reverse().cwiseProduct(pth::Vec(-1.0f, 1.0f));
+}
+
+inline pth::Vec particleField(const pth::Vec &pos) {
+  pth::Vec a = pos - pth::Vec(-0.75f, 0.0f), b = pos - pth::Vec(0.75f, 0.0f);
+
+  pth::Vec aField = 0.25f * ortho(a) + 0.5f * a;
+  aField.normalize();
+  aField *= 1.0f / std::sqrt(1.0f + a.squaredNorm());
+
+  pth::Vec bField = -0.45f * ortho(b) + -0.65f * b;
+  bField.normalize();
+  bField *= 1.0f / std::sqrt(1.0f + b.squaredNorm());
+
+  return aField + bField;
+}
+
 void Program::render(double time) {
-  auto timef = static_cast<float>(time);
+  double dt = time - m_lastTime;
 
   glViewport(0, 0, m_width, m_height);
 
-  glClearColor(0.1f, 0.5f, 1.0f, 1.0f);
+  glClearColor(0.0f, 0.5f, 0.0f, 1.0f);
   glClearDepthf(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -126,7 +146,7 @@ void Program::render(double time) {
 
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_wood);
+    cgl::SelectTextureUnits tex(m_white);
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
@@ -141,27 +161,140 @@ void Program::render(double time) {
   glDepthFunc(GL_LESS);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+  std::mt19937_64 mt(std::random_device{}());
+
+  int spawns = 10;
+
+  TransformStack ts;
+
+  Eigen::Vector2f aspect(m_width, m_height);
+  aspect.normalize();
+
+  const float SCALE = 4.0f;
+
+  ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
+
+  Eigen::Projective3f iview = ts->inverse();
+
+  while (time > m_spawnTime) {
+    --spawns;
+
+
+    if (m_particles[m_nextParticle].remain > 1e-3f)
+      warn("killing particle " + std::to_string(m_nextParticle));
+
+    const float JITTER = 0.1f;
+
+    std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
+
+    float life = std::uniform_real_distribution<float>(1.0f, 3.0f)(mt);
+
+    m_particles[m_nextParticle] = Particle{
+        .pos = (iview * Eigen::Vector3f(std::uniform_real_distribution<float>(
+                                            -1.0f, 1.0f)(mt),
+                                        std::uniform_real_distribution<float>(
+                                            -1.0f, 1.0f)(mt),
+                                        0.0f)
+                            .homogeneous())
+                   .hnormalized()
+                   .template head<2>(),
+        // .pos = Eigen::Vector2f(-0.77f, -0.03f) +
+        //        Eigen::Vector2f(posJitter(mt), posJitter(mt)),
+        .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(mt),
+        .life   = life,
+        .remain = life,
+    };
+
+    m_nextParticle = (m_nextParticle + 1) % m_particles.size();
+
+    m_spawnTime = (spawns ? m_spawnTime : time) +
+                  std::uniform_real_distribution(0.0f, 0.03f)(mt);
+  }
+
+  // if (int count = 10 - spawns; count) info(std::to_string(count));
+
+  // Field lines
+
+  // {
+  //   cgl::UseProgram         pgm(m_blit);
+  //   cgl::SelectTextureUnits tex(m_white);
+
+  //   pgm.uniform("u_S2D_TEXTURE").set(0);
+
+  //   pth::Path field;
+
+  //   // TODO: something about this is slow
+  //   for (int r = 0; r < 11; ++r) {
+  //     for (int c = 0; c < 11; ++c) {
+  //       pth::Vec pos(pth::lerp(-1.0_sc, 1.0_sc, c / 10_sc),
+  //                    pth::lerp(-1.0_sc, 1.0_sc, r / 10_sc));
+
+  //       field.open(pos);
+
+  //       for (int i = 0; i < 10; ++i) {
+  //         pos += particleField(pos) * 0.02f;
+  //         field.line(pos);
+  //       }
+  //     }
+  //   }
+
+  //   mdl::strokePath(m_fieldLines,
+  //                   field,
+  //                   4,
+  //                   0.005f,
+  //                   Eigen::Vector3f(1.0f, 0.0f, 0.0f),
+  //                   cgl::FreqDynamic);
+
+  //   ts.save();
+
+  //   ts << Eigen::Translation3f(Eigen::Vector3f(0.0f, 0.0f, -0.1f));
+
+  //   pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
+
+  //   cgl::SelectModel(m_fieldLines).draw();
+
+  //   ts.restore();
+  // }
+
+  // Particles
+
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_concrete);
+    cgl::SelectTextureUnits tex(m_white);
+    cgl::SelectModel        mdl(m_circle);
 
-    TransformStack ts;
+    pgm.uniform("u_S2D_TEXTURE").set(0);
 
-    Eigen::Vector2f aspect(m_width, m_height);
-    aspect.normalize();
+    for (int i = 0; i < m_particles.size(); ++i) {
+      auto &&particle = m_particles[i];
 
-    const float SCALE = 4.0f;
+      if (particle.remain < 1e-3f) continue;
 
-    ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
+      particle.remain -= dt;
 
-    ts << Eigen::AngleAxisf(timef / 4.0f, Eigen::Vector3f::UnitZ());
+      ts.save();
 
-    pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
+      Eigen::Vector3f pos;
+      pos.template head<2>() = particle.pos;
 
-    cgl::SelectModel(m_circle).draw();
+      ts << Eigen::Translation3f(pos);
+
+      ts << Eigen::UniformScaling<float>(
+          pth::lerp(0.0f, particle.size, particle.remain / particle.life));
+
+      pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
+
+      mdl.draw();
+
+      ts.restore();
+
+      particle.pos += particleField(particle.pos) * dt;
+    }
   }
 
   m_surf.swap();
+
+  m_lastTime = time;
 }
 
 void Program::resize(int width, int height) {
