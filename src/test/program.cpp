@@ -1,7 +1,6 @@
 #include "program.hpp"
 
 #include <array>
-#include <random>
 
 #include <GLES2/gl2.h>
 
@@ -20,7 +19,11 @@
 
 using namespace pth::lit;
 
-Program::Program(int, char **) : m_particles(1024) {
+Program::Program(int, char **) :
+    m_mt(std::random_device{}()),
+    m_particles(1024) {
+  // Window and context setup
+
   const unsigned int START_W = 640, START_H = 480;
 
   m_xDisp   = cx::Display(nullptr);
@@ -112,6 +115,14 @@ Program::Program(int, char **) : m_particles(1024) {
   m_white.addTex(0, 0, GL_TEXTURE_2D)
       .color(Eigen::Vector4f(1.0f, 1.0f, 1.0f, 1.0f));
 
+  // Framebuffer setup
+
+  m_mainFbufs   = cgl::Framebuffers(1);
+  m_mainFbufMap = cgl::TextureUnits(1);
+  m_mainFbufMap.addTex(0, 0, GL_TEXTURE_2D);
+
+  // ===== NB: THIS MUST COME LAST =====
+
   resize(START_W, START_H);
 }
 
@@ -124,7 +135,7 @@ inline pth::Vec ortho(const pth::Vec &v) {
 inline pth::Vec particleField(const pth::Vec &pos) {
   pth::Vec a = pos - pth::Vec(-0.75f, 0.0f), b = pos - pth::Vec(0.75f, 0.0f);
 
-  pth::Vec aField = 0.25f * ortho(a) + 0.5f * a;
+  pth::Vec aField = 0.25f * ortho(a) + 0.35f * a;
   aField.normalize();
   aField *= 1.0f / std::sqrt(1.0f + a.squaredNorm());
 
@@ -132,7 +143,143 @@ inline pth::Vec particleField(const pth::Vec &pos) {
   bField.normalize();
   bField *= 1.0f / std::sqrt(1.0f + b.squaredNorm());
 
-  return aField + bField;
+  return (aField + bField) * 0.5f;
+}
+
+// TODO: something about this is slow
+void Program::renderFieldLines() {
+  cgl::UseProgram         pgm(m_blit);
+  cgl::SelectTextureUnits tex(m_white);
+
+  pgm.uniform("u_S2D_TEXTURE").set(0);
+
+  pth::Path field;
+
+  for (int r = 0; r < 11; ++r) {
+    for (int c = 0; c < 11; ++c) {
+      pth::Vec pos(pth::lerp(-1.0_sc, 1.0_sc, c / 10_sc),
+                   pth::lerp(-1.0_sc, 1.0_sc, r / 10_sc));
+
+      field.open(pos);
+
+      for (int i = 0; i < 10; ++i) {
+        pos += particleField(pos) * 0.02f;
+        field.line(pos);
+      }
+    }
+  }
+
+  mdl::strokePath(m_fieldLines,
+                  field,
+                  4,
+                  0.005f,
+                  Eigen::Vector3f(1.0f, 0.0f, 0.0f),
+                  cgl::FreqDynamic);
+
+  TransformStack ts;
+
+  ts << m_proj;
+  ts << m_view;
+
+  ts << Eigen::Translation3f(Eigen::Vector3f(0.0f, 0.0f, -0.1f));
+
+  pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
+
+  cgl::SelectModel(m_fieldLines).draw();
+}
+
+void Program::renderParticles(double time, double dt) {
+  const int MAX_SPAWNS = 16;
+  int       spawns     = MAX_SPAWNS;
+
+  while (time > m_spawnTime) {
+    --spawns;
+
+    if (m_particles[m_nextParticle].remain > 1e-3f)
+      warn("killing particle " + std::to_string(m_nextParticle));
+
+    const float JITTER = 0.3f;
+
+    std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
+
+    float life = std::uniform_real_distribution<float>(0.5f, 4.0f)(m_mt);
+
+    m_particles[m_nextParticle] = Particle{
+        // .pos = (iproj *
+        //         Eigen::Vector3f(
+        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
+        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
+        //             0.0f)
+        //             .homogeneous())
+        //            .hnormalized()
+        //            .template head<2>(),
+        .pos = Eigen::Vector2f(-0.77f, -0.03f) +
+               Eigen::Vector2f(posJitter(m_mt), posJitter(m_mt)),
+        .clr = Eigen::Vector3f(
+                   std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt),
+                   std::uniform_real_distribution<float>(0.45f, 0.65f)(m_mt),
+                   std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt)) *
+               0.65f,
+        .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(m_mt),
+        .life   = life,
+        .remain = life,
+    };
+
+    m_nextParticle = (m_nextParticle + 1) % m_particles.size();
+
+    m_spawnTime = (spawns ? m_spawnTime : time) +
+                  std::uniform_real_distribution(0.0f, 0.01f)(m_mt);
+  }
+
+  // if (int count = MAX_SPAWNS - spawns; count) info(std::to_string(count));
+
+  {
+    cgl::UseProgram  pgm(m_particle);
+    cgl::SelectModel mdl(m_circle);
+
+    pgm.uniform("u_MAT_PROJ").set(m_proj, false);
+    pgm.uniform("u_MAT_VIEW").set(m_view, false);
+
+    TransformStack ts;
+
+    for (int i = 0; i < m_particles.size(); ++i) {
+      auto &&particle = m_particles[i];
+
+      if (particle.remain < 1e-3f) continue;
+
+      particle.remain -= dt;
+
+      ts.save();
+
+      Eigen::Vector3f pos;
+      Eigen::Vector4f clr;
+
+      float fadeIn = std::tanh((particle.life - particle.remain) / 0.25f);
+
+      pos.template head<2>() = particle.pos;
+      pos.z()                = 0.0f;
+
+      clr.template head<3>() = particle.clr;
+      clr.w()                = fadeIn;
+
+      ts << Eigen::Translation3f(pos);
+
+      ts << Eigen::UniformScaling<float>(particle.size *
+                                         (particle.remain / particle.life) *
+                                         pth::lerp(0.5f, 1.0f, fadeIn));
+
+      pgm.uniform("u_MAT_WORLD").set(*ts, false);
+      pgm.uniform("u_VEC_COLOR").set(clr);
+
+      mdl.draw();
+
+      ts.restore();
+
+      particle.pos += particleField(particle.pos) * dt;
+    }
+
+    ts.restore();
+  }
 }
 
 void Program::render(double time) {
@@ -148,6 +295,8 @@ void Program::render(double time) {
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_BLEND);
 
+  // Background
+
   {
     cgl::UseProgram         pgm(m_blit);
     cgl::SelectTextureUnits tex(m_white);
@@ -159,159 +308,15 @@ void Program::render(double time) {
   }
 
   glEnable(GL_CULL_FACE);
-  glEnable(GL_DEPTH_TEST);
+  glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glCullFace(GL_BACK);
   glDepthFunc(GL_LESS);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
-  std::mt19937_64 mt(std::random_device{}());
+  // renderFieldLines();
 
-  int spawns = 10;
-
-  TransformStack ts;
-
-  Eigen::Vector2f aspect(m_width, m_height);
-  aspect.normalize();
-
-  const float SCALE = 4.0f;
-
-  ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
-
-  Eigen::Projective3f iproj = ts->inverse();
-
-  while (time > m_spawnTime) {
-    --spawns;
-
-    if (m_particles[m_nextParticle].remain > 1e-3f)
-      warn("killing particle " + std::to_string(m_nextParticle));
-
-    const float JITTER = 0.03f;
-
-    std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
-
-    float life = std::uniform_real_distribution<float>(1.0f, 3.0f)(mt);
-
-    m_particles[m_nextParticle] = Particle{
-        // .pos = (iproj *
-        //         Eigen::Vector3f(
-        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(mt),
-        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(mt),
-        //             0.0f)
-        //             .homogeneous())
-        //            .hnormalized()
-        //            .template head<2>(),
-        .pos = Eigen::Vector2f(-0.77f, -0.03f) +
-               Eigen::Vector2f(posJitter(mt), posJitter(mt)),
-        .clr = Eigen::Vector3f(
-            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt),
-            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt),
-            std::uniform_real_distribution<float>(0.0f, 1.0f)(mt)),
-        .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(mt),
-        .life   = life,
-        .remain = life,
-    };
-
-    m_nextParticle = (m_nextParticle + 1) % m_particles.size();
-
-    m_spawnTime = (spawns ? m_spawnTime : time) +
-                  std::uniform_real_distribution(0.0f, 0.03f)(mt);
-  }
-
-  // if (int count = 10 - spawns; count) info(std::to_string(count));
-
-  // Field lines
-
-  // {
-  //   cgl::UseProgram         pgm(m_blit);
-  //   cgl::SelectTextureUnits tex(m_white);
-
-  //   pgm.uniform("u_S2D_TEXTURE").set(0);
-
-  //   pth::Path field;
-
-  //   // TODO: something about this is slow
-  //   for (int r = 0; r < 11; ++r) {
-  //     for (int c = 0; c < 11; ++c) {
-  //       pth::Vec pos(pth::lerp(-1.0_sc, 1.0_sc, c / 10_sc),
-  //                    pth::lerp(-1.0_sc, 1.0_sc, r / 10_sc));
-
-  //       field.open(pos);
-
-  //       for (int i = 0; i < 10; ++i) {
-  //         pos += particleField(pos) * 0.02f;
-  //         field.line(pos);
-  //       }
-  //     }
-  //   }
-
-  //   mdl::strokePath(m_fieldLines,
-  //                   field,
-  //                   4,
-  //                   0.005f,
-  //                   Eigen::Vector3f(1.0f, 0.0f, 0.0f),
-  //                   cgl::FreqDynamic);
-
-  //   ts.save();
-
-  //   ts << Eigen::Translation3f(Eigen::Vector3f(0.0f, 0.0f, -0.1f));
-
-  //   pgm.uniform("u_MAT_TRANSFORM").set(*ts, false);
-
-  //   cgl::SelectModel(m_fieldLines).draw();
-
-  //   ts.restore();
-  // }
-
-  // Particles
-
-  {
-    cgl::UseProgram         pgm(m_particle);
-    cgl::SelectModel        mdl(m_circle);
-
-    pgm.uniform("u_MAT_PROJ").set(*ts, false);
-
-    ts.save()->setIdentity();
-
-    pgm.uniform("u_MAT_VIEW").set(*ts, false);
-
-    ts->setIdentity();
-
-    for (int i = 0; i < m_particles.size(); ++i) {
-      auto &&particle = m_particles[i];
-
-      if (particle.remain < 1e-3f) continue;
-
-      particle.remain -= dt;
-
-      ts.save();
-
-      Eigen::Vector3f pos;
-      Eigen::Vector4f clr;
-
-      pos.template head<2>() = particle.pos;
-      pos.z() = 0.0f;
-
-      clr.template head<3>() = particle.clr;
-      clr.w() = 1.0f;
-
-      ts << Eigen::Translation3f(pos);
-
-      ts << Eigen::UniformScaling<float>(
-          pth::lerp(0.0f, particle.size, particle.remain / particle.life));
-
-      pgm.uniform("u_MAT_WORLD").set(*ts, false);
-      pgm.uniform("u_VEC_COLOR").set(clr);
-
-      mdl.draw();
-
-      ts.restore();
-
-      particle.pos += particleField(particle.pos) * dt;
-    }
-
-    ts.restore();
-  }
+  renderParticles(time, dt);
 
   m_surf.swap();
 
@@ -321,4 +326,39 @@ void Program::render(double time) {
 void Program::resize(int width, int height) {
   m_width  = width;
   m_height = height;
+
+  {
+    TransformStack ts;
+
+    const float SCALE = 4.0f;
+
+    Eigen::Vector2f aspect(m_width, m_height);
+    aspect.normalize();
+
+    ts << Eigen::Ortho3f(SCALE * aspect, 0.0f, 100.0f);
+
+    m_proj = *ts;
+
+    ts.clear();
+
+    m_view = *ts;
+  }
+
+  // TODO: should probably have some more framebuffer wrapper code
+  {
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[0]);
+
+    {
+      cgl::BindTexture tex = m_mainFbufMap.bindTex(0);
+
+      tex.image(0, width, height, GL_RGBA, GL_FLOAT, nullptr);
+
+      tex.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      tex.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      tex.param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      tex.param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+      fbuf.texture2D(GL_COLOR_ATTACHMENT0, tex, 0);
+    }
+  }
 }
