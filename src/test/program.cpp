@@ -132,6 +132,8 @@ Program::Program(int, char **) :
   m_mainFbufMap = cgl::TextureUnits(1);
   m_mainFbufMap.addTex(0, 0, GL_TEXTURE_2D);
 
+  m_mainRbufs = cgl::Renderbuffers(1);
+
   // ===== NB: THIS MUST COME LAST =====
 
   resize(START_W, START_H);
@@ -338,7 +340,8 @@ void Program::render(double time) {
 
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
-  glDisable(GL_BLEND);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   {
     cgl::UseProgram         pgm(m_blit);
@@ -347,7 +350,7 @@ void Program::render(double time) {
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
 
-    cgl::SelectModel(m_bkgdQuad).draw();
+    cgl::SelectModel(m_blitQuad).draw();
   }
 
   m_surf.swap();
@@ -383,16 +386,30 @@ void Program::resize(int width, int height) {
     {
       cgl::BindTexture tex = m_mainFbufMap.bindTex(0);
 
-      tex.image(0, width, height, GL_RGBA, GL_FLOAT, nullptr);
+      tex.image(0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
       tex.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
       tex.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       tex.param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       tex.param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-      // tex.genMipmap();
-
       fbuf.texture2D(GL_COLOR_ATTACHMENT0, tex, 0);
     }
+
+    {
+      cgl::BindRenderbuffer rbuf(GL_RENDERBUFFER, m_mainRbufs[0]);
+
+      rbuf.storage(GL_DEPTH_COMPONENT16, width, height);
+
+      fbuf.renderBuf(GL_DEPTH_ATTACHMENT, rbuf);
+    }
+
+    fbuf.assertStatus();
+
+    glViewport(0, 0, width, height);
+
+    glClearColor(0.0f, 0.5f, 0.0f, 0.0f);
+    glClearDepthf(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   }
 }

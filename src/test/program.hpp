@@ -13,6 +13,7 @@
 #include <cgles2/framebuffers.hpp>
 #include <cgles2/material.hpp>
 #include <cgles2/model.hpp>
+#include <cgles2/renderbuffers.hpp>
 #include <cgles2/textureUnits.hpp>
 
 struct Particle {
@@ -37,6 +38,8 @@ class Program {
   cgl::Model m_blitQuad, m_bkgdQuad, m_circle, m_fieldLines;
 
   cgl::TextureUnits m_white, m_mainFbufMap;
+
+  cgl::Renderbuffers m_mainRbufs;
 
   cgl::Framebuffers m_mainFbufs;
 

@@ -18,6 +18,7 @@ public:
 };
 
 class BindTexture;
+class BindRenderbuffer;
 
 class BindFramebuffer {
   core::Linear<GLenum, 0> m_target;
@@ -30,6 +31,8 @@ public:
   ~BindFramebuffer();
 
   void texture2D(GLenum attachment, const BindTexture &, GLint lvl);
+
+  void renderBuf(GLenum attachment, const BindRenderbuffer &);
 
   void assertStatus();
 

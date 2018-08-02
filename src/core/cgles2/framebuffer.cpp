@@ -4,6 +4,7 @@
 
 #include <diag.hpp>
 
+#include "renderbuffer.hpp"
 #include "texture.hpp"
 
 namespace cgl {
@@ -28,6 +29,14 @@ void BindFramebuffer::texture2D(GLenum             attachment,
                                 GLint              lvl) {
   glFramebufferTexture2D(
       m_target, attachment, tex.m_target, tex.m_tex->m_tex, lvl);
+}
+
+void BindFramebuffer::renderBuf(GLenum                  attachment,
+                                const BindRenderbuffer &rbuf) {
+  glFramebufferRenderbuffer(m_target,
+                            attachment,
+                            rbuf.m_target,
+                            rbuf.m_rbuf->m_rbuf);
 }
 
 void BindFramebuffer::assertStatus() {
