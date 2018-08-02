@@ -141,11 +141,15 @@ Program::Program(int, char **) :
 
   // Framebuffer setup
 
-  m_mainFbufs   = cgl::Framebuffers(1);
-  m_mainFbufMap = cgl::TextureUnits(1);
-  m_mainFbufMap.addTex(0, 0, GL_TEXTURE_2D);
+  m_mainFbufs = cgl::Framebuffers(MAIN_FBUF_COUNT);
+  m_mainRbufs = cgl::Renderbuffers(MAIN_FBUF_COUNT);
 
-  m_mainRbufs = cgl::Renderbuffers(1);
+  for (int i = 0; i < MAIN_FBUF_COUNT; ++i) {
+    auto &&map = m_mainFbufMap[i];
+
+    map = cgl::TextureUnits(1);
+    map.addTex(0, 0, GL_TEXTURE_2D);
+  }
 
   // ===== NB: THIS MUST COME LAST =====
 
@@ -245,7 +249,7 @@ void Program::renderParticles(double time, double dt) {
     float life = std::uniform_real_distribution<float>(0.5f, 4.0f)(m_mt);
 
     m_particles[m_nextParticle] = Particle{
-        // .pos = (iproj *
+        // .pos = (m_proj.inverse() *
         //         Eigen::Vector3f(
         //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
         //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
@@ -259,7 +263,11 @@ void Program::renderParticles(double time, double dt) {
                    std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt),
                    std::uniform_real_distribution<float>(0.45f, 0.65f)(m_mt),
                    std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt)) *
-               0.65f,
+               pth::lerp(0.45f,
+                         0.85f,
+                         std::pow(std::uniform_real_distribution(0_sc,
+                                                                 1_sc)(m_mt),
+                                  3)),
         .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(m_mt),
         .life   = life,
         .remain = life,
@@ -325,18 +333,32 @@ void Program::renderParticles(double time, double dt) {
 void Program::render(double time) {
   double dt = time - m_lastTime;
 
+  std::size_t lastMainFbuf = (m_mainFbuf - 1) % MAIN_FBUF_COUNT;
+
   {
-    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[0]);
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[m_mainFbuf]);
 
     glViewport(0, 0, m_width, m_height);
 
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_BLEND);
 
-    renderBackground(float(std::min(1.0, 10.0 * dt)));
+    {
+      cgl::UseProgram         pgm(m_blitFback);
+      cgl::SelectTextureUnits tex(m_mainFbufMap[lastMainFbuf]);
+
+      pgm.uniform("u_MAT_TRANSFORM")
+          .set(Eigen::Projective3f::Identity(), false);
+      pgm.uniform("u_S2D_TEXTURE").set(0);
+      // pgm.uniform("u_FLT_TIME").set(float(time));
+      pgm.uniform("u_FLT_DT").set(float(dt));
+
+      cgl::SelectModel(m_blitQuad).draw();
+    }
+
+    glClearDepthf(1.0f);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
     glEnable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
@@ -344,7 +366,7 @@ void Program::render(double time) {
     glCullFace(GL_BACK);
     glDepthFunc(GL_LESS);
     glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // renderFieldLines();
 
@@ -361,13 +383,13 @@ void Program::render(double time) {
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
   renderBackground(1.0f);
 
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_mainFbufMap);
+    cgl::SelectTextureUnits tex(m_mainFbufMap[m_mainFbuf]);
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
@@ -378,6 +400,7 @@ void Program::render(double time) {
 
   m_surf.swap();
 
+  m_mainFbuf = (m_mainFbuf + 1) % MAIN_FBUF_COUNT;
   m_lastTime = time;
 }
 
@@ -402,17 +425,16 @@ void Program::resize(int width, int height) {
     m_view = *ts;
   }
 
-  // TODO: should probably have some more framebuffer wrapper code
-  {
-    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[0]);
+  for (int i = 0; i < MAIN_FBUF_COUNT; ++i) {
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[i]);
 
     {
-      cgl::BindTexture tex = m_mainFbufMap.bindTex(0);
+      cgl::BindTexture tex = m_mainFbufMap[i].bindTex(0);
 
       tex.image(0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-      tex.param(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      tex.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      tex.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      tex.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       tex.param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       tex.param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
@@ -420,7 +442,7 @@ void Program::resize(int width, int height) {
     }
 
     {
-      cgl::BindRenderbuffer rbuf(GL_RENDERBUFFER, m_mainRbufs[0]);
+      cgl::BindRenderbuffer rbuf(GL_RENDERBUFFER, m_mainRbufs[i]);
 
       rbuf.storage(GL_DEPTH_COMPONENT16, width, height);
 

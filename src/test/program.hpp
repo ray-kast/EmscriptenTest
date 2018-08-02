@@ -37,11 +37,15 @@ class Program {
 
   cgl::Model m_blitQuad, m_bkgdQuad, m_circle, m_fieldLines;
 
-  cgl::TextureUnits m_white, m_mainFbufMap;
+  static constexpr int MAIN_FBUF_COUNT = 2;
+
+  cgl::TextureUnits m_white, m_mainFbufMap[MAIN_FBUF_COUNT];
 
   cgl::Renderbuffers m_mainRbufs;
 
   cgl::Framebuffers m_mainFbufs;
+
+  std::size_t m_mainFbuf = 0;
 
   Eigen::Projective3f m_proj, m_view;
 

@@ -12,15 +12,10 @@
 
 namespace cgl {
 class Material {
-  cgl::Program m_pgm;
+  Program m_pgm;
   bool         m_valid;
 
 public:
-  constexpr auto &pgm() {
-    assert(m_valid);
-    return m_pgm;
-  }
-
   constexpr const auto &pgm() const {
     assert(m_valid);
     return m_pgm;
@@ -28,7 +23,6 @@ public:
 
   Material() : m_valid(false) {}
 
-  constexpr operator Program &() { return pgm(); }
   constexpr operator const Program &() const { return pgm(); }
 
   Material &operator=(Material &&) = default;
