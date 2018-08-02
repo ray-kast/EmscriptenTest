@@ -35,10 +35,10 @@ public:
 
   ~BindTexture();
 
-  void param(GLenum, GLint);
-  void param(GLenum, const GLint *);
-  void param(GLenum, GLfloat);
-  void param(GLenum, const GLfloat *);
+  void param(GLenum, int);
+  void param(GLenum, const int *);
+  void param(GLenum, float);
+  void param(GLenum, const float *);
 
   template <typename T>
   void param(GLenum id, const std::vector<T> &vec) {

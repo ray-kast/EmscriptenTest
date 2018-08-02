@@ -35,6 +35,22 @@ BindTexture::~BindTexture() {
   s_bound.at(m_unit).erase(m_target);
 }
 
+void BindTexture::param(GLenum name, int val) {
+  glTexParameteri(m_target, name, val);
+}
+
+void BindTexture::param(GLenum name, const int *val) {
+  glTexParameteriv(m_target, name, val);
+}
+
+void BindTexture::param(GLenum name, float val) {
+  glTexParameterf(m_target, name, val);
+}
+
+void BindTexture::param(GLenum name, const float *val) {
+  glTexParameterfv(m_target, name, val);
+}
+
 void BindTexture::image(GLint       lvl,
                         GLsizei     width,
                         GLsizei     height,
