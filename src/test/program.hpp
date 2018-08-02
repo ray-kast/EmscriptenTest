@@ -33,7 +33,7 @@ class Program {
   cegl::Context     m_ctx;
   cegl::MakeCurrent m_makeCurrent;
 
-  cgl::Material m_blit, m_particle;
+  cgl::Material m_blit, m_blitFback, m_particle;
 
   cgl::Model m_blitQuad, m_bkgdQuad, m_circle, m_fieldLines;
 
@@ -51,6 +51,8 @@ class Program {
   double m_lastTime = 0.0, m_spawnTime = 0.0;
 
   unsigned int m_width, m_height;
+
+  void renderBackground(float alpha);
 
   void renderFieldLines();
 

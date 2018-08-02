@@ -79,6 +79,19 @@ Program::Program(int, char **) :
     setup.input(2, "in_UV0");
   }
 
+  m_blitFback = cgl::Material();
+
+  {
+    cgl::SetupMaterial setup(m_blitFback);
+
+    setup.add(GL_VERTEX_SHADER, "assets/shd/blit.vert");
+    setup.add(GL_FRAGMENT_SHADER, "assets/shd/blitFback.frag");
+
+    setup.input(0, "in_POSITION");
+    setup.input(1, "in_COLOR");
+    setup.input(2, "in_UV0");
+  }
+
   m_particle = cgl::Material();
 
   {
@@ -141,6 +154,19 @@ Program::Program(int, char **) :
 
 Program::~Program() {}
 
+void Program::renderBackground(float alpha) {
+  {
+    cgl::UseProgram         pgm(m_blit);
+    cgl::SelectTextureUnits tex(m_white);
+
+    pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
+    pgm.uniform("u_S2D_TEXTURE").set(0);
+    pgm.uniform("u_FLT_ALPHA").set(alpha);
+
+    cgl::SelectModel(m_bkgdQuad).draw();
+  }
+}
+
 inline pth::Vec ortho(const pth::Vec &v) {
   return v.reverse().cwiseProduct(pth::Vec(-1.0f, 1.0f));
 }
@@ -152,7 +178,8 @@ inline pth::Vec particleField(const pth::Vec &pos) {
   aField.normalize();
   aField *= 1.0f / std::sqrt(1.0f + a.squaredNorm());
 
-  pth::Vec bField = -0.45f * ortho(b) + -0.65f * b;
+  pth::Vec bField = -0.45f * ortho(b) +
+                    -0.65f * b * std::tanh(std::sqrt(b.norm()));
   bField.normalize();
   bField *= 1.0f / std::sqrt(1.0f + b.squaredNorm());
 
@@ -211,7 +238,7 @@ void Program::renderParticles(double time, double dt) {
     if (m_particles[m_nextParticle].remain > 1e-3f)
       warn("killing particle " + std::to_string(m_nextParticle));
 
-    const float JITTER = 0.3f;
+    const float JITTER = 0.5f;
 
     std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
 
@@ -226,7 +253,7 @@ void Program::renderParticles(double time, double dt) {
         //             .homogeneous())
         //            .hnormalized()
         //            .template head<2>(),
-        .pos = Eigen::Vector2f(-0.77f, -0.03f) +
+        .pos = Eigen::Vector2f(-0.77f, -0.05f) +
                Eigen::Vector2f(posJitter(m_mt), posJitter(m_mt)),
         .clr = Eigen::Vector3f(
                    std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt),
@@ -273,7 +300,7 @@ void Program::renderParticles(double time, double dt) {
       pos.z()                = 0.0f;
 
       clr.template head<3>() = particle.clr;
-      clr.w()                = fadeIn;
+      clr.w()                = fadeIn * float(std::min(1.0, 20.0 * dt));
 
       ts << Eigen::Translation3f(pos);
 
@@ -303,28 +330,20 @@ void Program::render(double time) {
 
     glViewport(0, 0, m_width, m_height);
 
-    // glDisable(GL_CULL_FACE);
-    // glDisable(GL_DEPTH_TEST);
-    // glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // // Background
-
-    // {
-    //   cgl::UseProgram         pgm(m_blit);
-    //   cgl::SelectTextureUnits tex(m_white);
-
-    //   pgm.uniform("u_MAT_TRANSFORM")
-    //       .set(Eigen::Projective3f::Identity(), false);
-    //   pgm.uniform("u_S2D_TEXTURE").set(0);
-
-    //   cgl::SelectModel(m_bkgdQuad).draw();
-    // }
+    renderBackground(float(std::min(1.0, 10.0 * dt)));
 
     glEnable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glCullFace(GL_BACK);
     glDepthFunc(GL_LESS);
+    glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
     // renderFieldLines();
@@ -341,7 +360,10 @@ void Program::render(double time) {
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
+  glBlendEquation(GL_FUNC_ADD);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  renderBackground(1.0f);
 
   {
     cgl::UseProgram         pgm(m_blit);
@@ -349,6 +371,7 @@ void Program::render(double time) {
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
+    pgm.uniform("u_FLT_ALPHA").set(1.0f);
 
     cgl::SelectModel(m_blitQuad).draw();
   }
@@ -411,5 +434,11 @@ void Program::resize(int width, int height) {
     glClearColor(0.0f, 0.5f, 0.0f, 0.0f);
     glClearDepthf(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+
+    renderBackground(1.0f);
   }
 }

@@ -10,8 +10,8 @@
 
 namespace cgl {
 class Renderbuffers {
-  GLsizei                                  m_size;
-  core::Linear<GLuint *, nullptr>          m_rbufs;
+  GLsizei                                   m_size;
+  core::Linear<GLuint *, nullptr>           m_rbufs;
   std::unordered_map<GLsizei, Renderbuffer> m_owned;
 
 public:
