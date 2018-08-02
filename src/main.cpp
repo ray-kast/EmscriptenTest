@@ -10,24 +10,10 @@ static Program *s_pgm;
 
 inline double now() { return emscripten_get_now() / 1e3; }
 
-static void mainLoop() {
-  try {
-    s_pgm->render(now() - s_startTime);
-  }
-  catch (std::runtime_error &e) {
-    err(e.what());
-    throw;
-  }
-}
+static void mainLoop() { s_pgm->render(now() - s_startTime); }
 
 int main(int argc, char **argv) {
-  try {
-    s_pgm = new Program(argc, argv);
-  }
-  catch (std::runtime_error &e) {
-    err(e.what());
-    throw;
-  }
+  s_pgm = new Program(argc, argv);
 
   s_startTime = now();
 
@@ -64,7 +50,8 @@ int main(int argc, char **argv) {
   XSetIOErrorHandler(handleXIOError);
 
   Program pgm(argc, argv);
-  DIAG_IF(static bool s_traceRender = true;)
+  // NB: no commas allowed here
+  DIAG_IF(bool traceRender = true; bool traceResize = true;)
 
   auto &&disp = pgm.xDisp();
 
@@ -81,7 +68,16 @@ int main(int argc, char **argv) {
       case ConfigureNotify: {
         auto &&evt = xev.xconfigure;
 
+        // TODO: deal with extra call to resize()
+        DIAG_IF(bool trace = traceResize; if (trace) {
+          info("[======== \e[1mresize start\e[0m ========]");
+          traceResize = false;
+        } else glDiagOff();)
+
         pgm.resize(evt.width, evt.height);
+
+        DIAG_IF(if (trace) info("[========  \e[1mresize end\e[0m  ========]");
+                else glDiagOn();)
 
         break;
       }
@@ -117,9 +113,9 @@ int main(int argc, char **argv) {
       }
     }
 
-    DIAG_IF(bool trace = s_traceRender; if (trace) {
+    DIAG_IF(bool trace = traceRender; if (trace) {
       info("[======== \e[1mframe start\e[0m ========]");
-      s_traceRender = false;
+      traceRender = false;
     } else glDiagOff();)
 
     pgm.render(now() - startTime);
