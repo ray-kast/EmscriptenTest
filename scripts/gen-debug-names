@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+require 'set'
+state = 0
+
+enums = {}
+exts = []
+
+while gets
+  line = $_
+  case state
+    when 0
+      case line
+        when /^\s*\/\*\s*$/
+          state = 2
+        when /^\s*#define\s+(GL_[A-Z0-9_]+)\s+(0x[0-9a-fA-F]+)\s+.*$/
+          val = Integer($2)
+          enums.fetch(val) {|k| enums[k] = [] } << $1 if val <= 0xFFFFFFFF
+        when /^\s*#if.*$/
+          state = 1
+      end
+    when 1
+      case line
+        when /^\s*#endif\b.*$/
+          state = 0
+      end
+    when 2
+      case line
+        when /^\s*\*\/\s*/
+          state = 0
+        when /^\s*extensions:\s*$/i
+          state = 3
+      end
+    when 3
+      case line
+        when /^\s*GL_([A-Z0-9_]+)(?:_([a-z0-9_][a-zA-Z0-9_]*))?\s*,?\s*$/
+          exts << [$1, $2.upcase!]
+        else
+          state = 2
+      end
+  end
+end
+
+# Because the vendor suffixes for some things (e.g. S3TC) are weird
+suffixes = Set.new(exts.flat_map{|a, b| [a, *(b if !b.include?("_") && b.include?(a))] })
+
+reject_regex  = /_(?:#{suffixes.to_a.join("|")})$/i
+
+enums = enums.map do |key, vals|
+  (flags, names) = vals.partition{|v| v.sub(reject_regex, "").end_with?("_BIT") }
+    .map{|l| l.length > 1 ? begin r = l.reject{|e| e =~ reject_regex }; r.empty? ? l : r end : l }
+
+  # vals = vals.reject{|v| v =~ reject_regex } if vals.length > 1
+  [key, names, flags]
+end
+
+[false, true].each do |flags|
+  enums.map{|k, n, f| [k, flags ? f : n] }.reject{|k, v| v.empty? }.sort
+    .chunk_while{|p, n| flags ? n[0] / p[0] <= 2 : n[0] - p[0] < 2 }.each do |chunk|
+    chunk.each do |key, vals|
+      puts "s_enum#{flags ? "Flags" : "Names"}[0x#{key.to_s(16).rjust(8, '0')}] = #{(vals.length > 1 ?
+        "(#{vals.join(" | ")})" :
+        vals.first).inspect};"
+    end
+
+    puts ""
+  end
+end

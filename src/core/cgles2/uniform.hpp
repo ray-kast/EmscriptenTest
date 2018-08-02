@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #undef Success // see program.cpp
 

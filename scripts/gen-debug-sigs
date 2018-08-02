@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+require 'set'
+
+types = {}
+sigs = {}
+
+val_types = {}
+
+process_type = lambda do |type, arity|
+  from = [*type, *("[#{arity}]" if arity)].join(" ")
+
+  prefix = ""
+
+  catch(:stop) do
+    loop do
+      prefix << case type[-1]
+        when /\*+/; "p" * $~.string.length
+        when "const"; "c"
+        else throw(:stop)
+      end.tap{|r| type.pop if r }
+    end
+  end
+
+  type = type.map do |part|
+    part = case part
+      when "const"; "c"
+      when "unsigned"; "u"
+      when "signed"; "s"
+      when /^GL(.*)$/; $1
+      else part
+    end
+
+    part = "#{part[0].upcase!}#{part[1..-1]}" if part.length > 1
+
+    part
+  end
+
+  prefix << "g" if prefix.empty? && type.length == 1
+
+  "glt::#{prefix}#{type.join}#{arity}".tap{|r| val_types.fetch(r) {|k| val_types[k] = Set[] } << from }
+end
+
+while gets
+  line = $_
+  case line
+    when /^\s*typedef\s+(.*)\s+\(APIENTRYP\s+(PFNGL[A-Z0-9_]+PROC)\)\s*\((.*)\)\s*;\s*$/
+      (ret, name, args) = $~.captures
+      types[name] = [
+        process_type.(ret.split(/\s+|\b/), nil),
+        args == "void" ? [] : args.split(/,\s*/).map do |arg|
+          # NOTE: This discards array suffixes
+          md = arg.match(/^\s*((?:\w+|\s+|\*+)+)(?:\[([0-9]+)\])?\s*$/)
+
+          (*type, name) = md.captures[0].split(/\s+|\b/)
+
+          raise "invalid argument #{arg.inspect}" unless md
+
+          [process_type.(type, md.captures[1]), name]
+        end,
+      ]
+    when /^\s*GLAPI\s+(PFNGL[A-Z0-9_]+PROC)\s+glad_(?:debug_)?(gl[a-zA-Z0-9_]+)\s*;\s*$/
+      sig = types[$1]
+      if sigs.include?($2)
+        raise "duplicate signature" unless sigs[$2] == sig
+      else
+        sigs[$2] = sig
+      end
+  end
+end
+
+$stderr << types["PFNGLBLENDBARRIERKHRPROC"].inspect << "\n"
+
+val_types.sort.each do |type, from|
+  puts "// #{from.sort.join(", ")} -> #{type}"
+end
+
+sigs.sort.each do |name, (ret, args)|
+  puts "s_funcSigs[#{name.inspect}] = std::vector<glt>{#{[ret, *args.map{|t, n| t }].join(", ")}};"
+end

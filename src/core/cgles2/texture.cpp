@@ -21,7 +21,7 @@ BindTexture::BindTexture(GLenum unit, GLenum target, const Texture &tex) :
     m_tex(&tex),
     m_unit(unit) {
   if (!s_bound[m_unit].emplace(m_target).second)
-    die("texture type " + std::to_string(target) + " already bound in unit " +
+    die("texture type " + glEnumName(target) + " already bound in unit " +
         std::to_string(m_unit) + ".");
 
   activate();

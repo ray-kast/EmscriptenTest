@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #undef Success // I hate that Xlib does this.
 

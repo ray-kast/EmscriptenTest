@@ -27,8 +27,7 @@ SetupMaterial::~SetupMaterial() {
 void SetupMaterial::add(GLenum type, const std::string &path) {
   auto pair = m_shaders.emplace(type, std::make_pair(type, path));
 
-  if (!pair.second)
-    die("shader type " + std::to_string(type) + " already added");
+  if (!pair.second) die("shader type " + glEnumName(type) + " already added");
 
   m_mat->m_pgm.add(pair.first->second.first);
 }

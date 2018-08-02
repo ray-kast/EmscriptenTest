@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #include <linear.hpp>
 

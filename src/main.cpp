@@ -64,6 +64,7 @@ int main(int argc, char **argv) {
   XSetIOErrorHandler(handleXIOError);
 
   Program pgm(argc, argv);
+  DIAG_IF(static bool s_traceRender = true;)
 
   auto &&disp = pgm.xDisp();
 
@@ -116,7 +117,15 @@ int main(int argc, char **argv) {
       }
     }
 
+    DIAG_IF(bool trace = s_traceRender; if (trace) {
+      info("[======== \e[1mframe start\e[0m ========]");
+      s_traceRender = false;
+    } else glDiagOff();)
+
     pgm.render(now() - startTime);
+
+    DIAG_IF(if (trace) info("[========  \e[1mframe end\e[0m  ========]");
+            else glDiagOn();)
   }
 
 stop:

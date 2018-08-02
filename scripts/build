@@ -363,6 +363,13 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     common_bcs << bc
   end
 
+  # GLAD should not be given to Emscripten
+  src = "$src_d/glad.c"
+  obj = File.change_ext(src.sub("$src_d", "$build_d"), ".o")
+  build obj, from: src,
+    flags: "$includes"
+  common_objs << obj
+
   exclude_dirs = [
     "common",
     "core",

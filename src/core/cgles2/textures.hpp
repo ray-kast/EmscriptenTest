@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #include <linear.hpp>
 

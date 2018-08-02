@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #include <getPtr.hpp>
 #include <linear.hpp>

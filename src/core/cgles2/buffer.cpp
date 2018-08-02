@@ -29,7 +29,7 @@ static std::unordered_set<GLenum> s_bound;
 
 BindBuffer::BindBuffer(GLenum target, const Buffer &buf) : m_target(target) {
   if (!s_bound.emplace(m_target).second)
-    die("buffer type " + std::to_string(target) + " already bound");
+    die("buffer type " + glEnumName(target) + " already bound");
 
   glBindBuffer(target, buf.m_buf);
 }

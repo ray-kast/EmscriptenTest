@@ -12,7 +12,7 @@ static std::unordered_set<GLenum> s_bound;
 BindFramebuffer::BindFramebuffer(GLenum target, const Framebuffer &fbuf) :
     m_target(target) {
   if (!s_bound.emplace(m_target).second)
-    die("framebuffer type " + std::to_string(target) + " already bound");
+    die("framebuffer type " + glEnumName(target) + " already bound");
 
   glBindFramebuffer(target, fbuf.m_fbuf);
 }
@@ -34,7 +34,7 @@ void BindFramebuffer::assertStatus() {
   auto status = glCheckFramebufferStatus(m_target);
 
   if (status != GL_FRAMEBUFFER_COMPLETE)
-    die("framebuffer " + std::to_string(m_target) + " had unexpected status " +
-        std::to_string(status));
+    die("framebuffer " + glEnumName(m_target) + " had unexpected status " +
+        glEnumName(status));
 }
 } // namespace cgl

@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include <GLES2/gl2.h>
+#include "glad.hpp"
 
 #undef Success // I hate that Xlib does this.
 
@@ -58,6 +58,11 @@ Program::Program(int, char **) :
   m_ctx  = cegl::Context(m_surf, {EGL_CONTEXT_CLIENT_VERSION, 2});
 
   m_makeCurrent = cegl::MakeCurrent(m_surf, m_surf, m_ctx);
+
+#if !defined(_JS)
+  if (!gladLoadGLES2Loader(reinterpret_cast<GLADloadproc>(eglGetProcAddress)))
+    die("failed to load OpenGL");
+#endif
 
   // Material setup
 
