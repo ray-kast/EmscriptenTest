@@ -74,7 +74,9 @@ SelectModel::~SelectModel() {
   if (m_model.empty()) return;
 
   for (auto &[data, _] : m_model.get()->m_attribs) {
-    GLuint idx = glGetAttribLocation(m_pgm, data.c_str());
+    GLint idx = glGetAttribLocation(m_pgm, data.c_str());
+
+    if (idx < 0) continue;
 
     glDisableVertexAttribArray(idx);
   }

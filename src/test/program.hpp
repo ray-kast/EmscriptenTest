@@ -34,7 +34,7 @@ class Program {
 
   cgl::Material m_blit, m_particle;
 
-  cgl::Model m_bkgdQuad, m_circle, m_fieldLines;
+  cgl::Model m_blitQuad, m_bkgdQuad, m_circle, m_fieldLines;
 
   cgl::TextureUnits m_white, m_mainFbufMap;
 

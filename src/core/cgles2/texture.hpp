@@ -63,6 +63,8 @@ public:
     image(0, 1, 1, GL_RGBA, GL_FLOAT, &clr);
   }
 
+  void genMipmap();
+
   BindTexture &operator=(BindTexture &&) = default;
 
   friend class BindFramebuffer;

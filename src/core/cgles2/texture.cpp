@@ -84,9 +84,11 @@ void BindTexture::loadImage(GLint lvl, const std::string &path) {
   }
 
   image(lvl, isurf->w, isurf->h, format, GL_UNSIGNED_BYTE, isurf->pixels);
-  glGenerateMipmap(m_target); // TODO: this needs to be smarter
+  genMipmap(); // TODO: this needs to be smarter
 
   SDL_UnlockSurface(isurf);
   SDL_FreeSurface(isurf);
 }
+
+void BindTexture::genMipmap() { glGenerateMipmap(m_target); }
 } // namespace cgl

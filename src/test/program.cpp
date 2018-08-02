@@ -87,6 +87,12 @@ Program::Program(int, char **) :
 
   // Model setup
 
+  mdl::setupBlitQuad(m_blitQuad);
+  mdl::blitQuad(m_blitQuad,
+                0.0f,
+                Eigen::Vector3f(1.0f, 1.0f, 1.0f),
+                cgl::FreqStatic);
+
   mdl::setupBlitQuad(m_bkgdQuad);
   mdl::blitQuad(m_bkgdQuad,
                 1.0f,
@@ -285,6 +291,40 @@ void Program::renderParticles(double time, double dt) {
 void Program::render(double time) {
   double dt = time - m_lastTime;
 
+  {
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[0]);
+
+    glViewport(0, 0, m_width, m_height);
+
+    // glDisable(GL_CULL_FACE);
+    // glDisable(GL_DEPTH_TEST);
+    // glDisable(GL_BLEND);
+
+    // // Background
+
+    // {
+    //   cgl::UseProgram         pgm(m_blit);
+    //   cgl::SelectTextureUnits tex(m_white);
+
+    //   pgm.uniform("u_MAT_TRANSFORM")
+    //       .set(Eigen::Projective3f::Identity(), false);
+    //   pgm.uniform("u_S2D_TEXTURE").set(0);
+
+    //   cgl::SelectModel(m_bkgdQuad).draw();
+    // }
+
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glCullFace(GL_BACK);
+    glDepthFunc(GL_LESS);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+    // renderFieldLines();
+
+    renderParticles(time, dt);
+  }
+
   glViewport(0, 0, m_width, m_height);
 
   glClearColor(0.0f, 0.5f, 0.0f, 1.0f);
@@ -295,28 +335,15 @@ void Program::render(double time) {
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_BLEND);
 
-  // Background
-
   {
     cgl::UseProgram         pgm(m_blit);
-    cgl::SelectTextureUnits tex(m_white);
+    cgl::SelectTextureUnits tex(m_mainFbufMap);
 
     pgm.uniform("u_MAT_TRANSFORM").set(Eigen::Projective3f::Identity(), false);
     pgm.uniform("u_S2D_TEXTURE").set(0);
 
     cgl::SelectModel(m_bkgdQuad).draw();
   }
-
-  glEnable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glCullFace(GL_BACK);
-  glDepthFunc(GL_LESS);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
-  // renderFieldLines();
-
-  renderParticles(time, dt);
 
   m_surf.swap();
 
@@ -357,6 +384,8 @@ void Program::resize(int width, int height) {
       tex.param(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       tex.param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       tex.param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+      // tex.genMipmap();
 
       fbuf.texture2D(GL_COLOR_ATTACHMENT0, tex, 0);
     }
