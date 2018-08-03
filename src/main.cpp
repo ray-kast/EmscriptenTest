@@ -1,5 +1,11 @@
 #include "program.hpp"
 
+inline auto invokeResize(Program &pgm, int width, int height) {
+  if (width == pgm.width() && height == pgm.height()) return;
+
+  pgm.resize(width, height);
+}
+
 #if defined(_JS)
 #include <emscripten.h>
 
@@ -74,7 +80,7 @@ int main(int argc, char **argv) {
           traceResize = false;
         } else glDiagOff();)
 
-        pgm.resize(evt.width, evt.height);
+        invokeResize(pgm, evt.width, evt.height);
 
         DIAG_IF(if (trace) info("[========  \e[1mresize end\e[0m  ========]");
                 else glDiagOn();)

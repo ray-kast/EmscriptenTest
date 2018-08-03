@@ -32,6 +32,9 @@ class Program {
 public:
   constexpr auto &xDisp() { return m_xDisp; }
 
+  constexpr auto &width() const { return m_width; }
+  constexpr auto &height() const { return m_height; }
+
   Program(int, char **);
 
   ~Program();

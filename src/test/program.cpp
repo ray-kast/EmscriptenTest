@@ -277,13 +277,21 @@ void Program::renderParticles(double time, double dt) {
 
     {
       Eigen::Vector3f palette[]{
+          // Teal, magenta, black
           // Eigen::Vector3f(0.0f, 0.85f, 0.5f),
           // Eigen::Vector3f(0.95f, 0.1f, 0.85f),
           // Eigen::Vector3f(0.1f, 0.1f, 0.1f),
-          Eigen::Vector3f(0.85f, 0.5f, 0.03f),
-          Eigen::Vector3f(0.25f, 0.85f, 0.1f),
-          Eigen::Vector3f(0.04f, 0.45f, 0.95f),
-          Eigen::Vector3f(0.85f, 0.02f, 0.55f),
+
+          // Orange, green, blue, magenta
+          // Eigen::Vector3f(0.85f, 0.5f, 0.03f),
+          // Eigen::Vector3f(0.25f, 0.85f, 0.1f),
+          // Eigen::Vector3f(0.04f, 0.45f, 0.95f),
+          // Eigen::Vector3f(0.85f, 0.02f, 0.55f),
+
+          // Black, white, caramel
+          Eigen::Vector3f(0.1f, 0.1f, 0.1f),
+          Eigen::Vector3f(0.95f, 0.95f, 0.87f),
+          Eigen::Vector3f(0.75f, 0.45f, 0.12f),
       };
 
       color = palette[std::uniform_int_distribution<std::size_t>(
@@ -296,12 +304,12 @@ void Program::renderParticles(double time, double dt) {
                                clrJitter(m_mt));
 
       color *= pth::lerp(
-          0.65f,
+          0.75f,
           1.0f,
           std::pow(std::uniform_real_distribution(0_sc, 1_sc)(m_mt), 3));
     }
 
-    float life = std::uniform_real_distribution<float>(0.5f, 2.0f)(m_mt);
+    float life = std::uniform_real_distribution<float>(0.45f, 2.0f)(m_mt);
 
     m_particles[m_nextParticle] = Particle{
         .pos    = pos,
@@ -340,7 +348,7 @@ void Program::renderParticles(double time, double dt) {
       Eigen::Vector3f pos;
       Eigen::Vector4f clr;
 
-      float fadeIn = std::tanh((particle.life - particle.remain) / 0.25f);
+      float fadeIn = std::tanh((particle.life - particle.remain) / 1.0f);
 
       pos.template head<2>() = particle.pos;
       pos.z()                = 0.0f;
@@ -352,7 +360,7 @@ void Program::renderParticles(double time, double dt) {
 
       ts << Eigen::UniformScaling<float>(particle.size *
                                          (particle.remain / particle.life) *
-                                         pth::lerp(0.5f, 1.0f, fadeIn));
+                                         pth::lerp(0.35f, 1.0f, fadeIn));
 
       pgm.uniform("u_MAT_WORLD").set(*ts, false);
       pgm.uniform("u_VEC_COLOR").set(clr);
@@ -387,7 +395,7 @@ void Program::render(double time) {
     glEnable(GL_BLEND);
     glCullFace(GL_BACK);
     glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     // renderFieldLines(time);
 
@@ -424,7 +432,7 @@ void Program::render(double time) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     {
       cgl::UseProgram         pgm(m_blit);
