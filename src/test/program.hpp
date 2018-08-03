@@ -39,11 +39,11 @@ class Program {
 
   static constexpr int MAIN_FBUF_COUNT = 2;
 
-  cgl::TextureUnits m_white, m_mainFbufMap[MAIN_FBUF_COUNT];
+  cgl::TextureUnits m_white, m_mainFbufMap[MAIN_FBUF_COUNT], m_particleMap;
 
-  cgl::Renderbuffers m_mainRbufs;
+  cgl::Renderbuffers m_mainRbufs, m_particleRbufs;
 
-  cgl::Framebuffers m_mainFbufs;
+  cgl::Framebuffers m_mainFbufs, m_particleFbufs;
 
   std::size_t m_mainFbuf = 0;
 
@@ -58,7 +58,7 @@ class Program {
 
   void renderBackground(float alpha);
 
-  void renderFieldLines();
+  void renderFieldLines(double time);
 
   void renderParticles(double time, double dt);
 

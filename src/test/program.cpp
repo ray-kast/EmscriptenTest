@@ -151,6 +151,11 @@ Program::Program(int, char **) :
     map.addTex(0, 0, GL_TEXTURE_2D);
   }
 
+  m_particleMap   = cgl::TextureUnits(1);
+  m_particleFbufs = cgl::Framebuffers(1);
+  m_particleRbufs = cgl::Renderbuffers(1);
+  m_particleMap.addTex(0, 0, GL_TEXTURE_2D);
+
   // ===== NB: THIS MUST COME LAST =====
 
   resize(START_W, START_H);
@@ -175,8 +180,13 @@ inline pth::Vec ortho(const pth::Vec &v) {
   return v.reverse().cwiseProduct(pth::Vec(-1.0f, 1.0f));
 }
 
-inline pth::Vec particleField(const pth::Vec &pos) {
-  pth::Vec a = pos - pth::Vec(-0.75f, 0.0f), b = pos - pth::Vec(0.75f, 0.0f);
+inline pth::Vec particleField(const pth::Vec &pos, double time) {
+  pth::Vec           a(-0.75f, 0.0f), b(0.75f, 0.0f);
+  float              theta = float(time) * 1_grad / 40.0f;
+  Eigen::Rotation2Df rot(theta);
+
+  a = pos - rot * a;
+  b = pos - rot * b;
 
   pth::Vec aField = 0.25f * ortho(a) + 0.35f * a;
   aField.normalize();
@@ -191,7 +201,7 @@ inline pth::Vec particleField(const pth::Vec &pos) {
 }
 
 // TODO: something about this is slow
-void Program::renderFieldLines() {
+void Program::renderFieldLines(double time) {
   cgl::UseProgram         pgm(m_blit);
   cgl::SelectTextureUnits tex(m_white);
 
@@ -207,7 +217,7 @@ void Program::renderFieldLines() {
       field.open(pos);
 
       for (int i = 0; i < 10; ++i) {
-        pos += particleField(pos) * 0.02f;
+        pos += particleField(pos, time) * 0.02f;
         field.line(pos);
       }
     }
@@ -242,32 +252,60 @@ void Program::renderParticles(double time, double dt) {
     if (m_particles[m_nextParticle].remain > 1e-3f)
       warn("killing particle " + std::to_string(m_nextParticle));
 
-    const float JITTER = 0.5f;
+    Eigen::Vector2f pos;
 
-    std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
+    if constexpr ((false)) {
+      const float JITTER = 0.5f;
 
-    float life = std::uniform_real_distribution<float>(0.5f, 4.0f)(m_mt);
+      std::uniform_real_distribution<float> posJitter(-JITTER, JITTER);
+
+      pos = Eigen::Vector2f(-0.77f, -0.05f) +
+            Eigen::Vector2f(posJitter(m_mt), posJitter(m_mt));
+    }
+    else {
+      pos = (m_proj.inverse() *
+             Eigen::Vector3f(
+                 std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
+                 std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
+                 0.0f)
+                 .homogeneous())
+                .hnormalized()
+                .template head<2>();
+    }
+
+    Eigen::Vector3f color;
+
+    {
+      Eigen::Vector3f palette[]{
+          // Eigen::Vector3f(0.0f, 0.85f, 0.5f),
+          // Eigen::Vector3f(0.95f, 0.1f, 0.85f),
+          // Eigen::Vector3f(0.1f, 0.1f, 0.1f),
+          Eigen::Vector3f(0.85f, 0.5f, 0.03f),
+          Eigen::Vector3f(0.25f, 0.85f, 0.1f),
+          Eigen::Vector3f(0.04f, 0.45f, 0.95f),
+          Eigen::Vector3f(0.85f, 0.02f, 0.55f),
+      };
+
+      color = palette[std::uniform_int_distribution<std::size_t>(
+          0, sizeof(palette) / sizeof(*palette) - 1)(m_mt)];
+
+      std::uniform_real_distribution<float> clrJitter(-0.01f, 0.01f);
+
+      color += Eigen::Vector3f(clrJitter(m_mt),
+                               clrJitter(m_mt),
+                               clrJitter(m_mt));
+
+      color *= pth::lerp(
+          0.65f,
+          1.0f,
+          std::pow(std::uniform_real_distribution(0_sc, 1_sc)(m_mt), 3));
+    }
+
+    float life = std::uniform_real_distribution<float>(0.5f, 2.0f)(m_mt);
 
     m_particles[m_nextParticle] = Particle{
-        // .pos = (m_proj.inverse() *
-        //         Eigen::Vector3f(
-        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
-        //             std::uniform_real_distribution<float>(-1.0f, 1.0f)(m_mt),
-        //             0.0f)
-        //             .homogeneous())
-        //            .hnormalized()
-        //            .template head<2>(),
-        .pos = Eigen::Vector2f(-0.77f, -0.05f) +
-               Eigen::Vector2f(posJitter(m_mt), posJitter(m_mt)),
-        .clr = Eigen::Vector3f(
-                   std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt),
-                   std::uniform_real_distribution<float>(0.45f, 0.65f)(m_mt),
-                   std::uniform_real_distribution<float>(0.0f, 0.35f)(m_mt)) *
-               pth::lerp(0.45f,
-                         0.85f,
-                         std::pow(std::uniform_real_distribution(0_sc,
-                                                                 1_sc)(m_mt),
-                                  3)),
+        .pos    = pos,
+        .clr    = color,
         .size   = std::uniform_real_distribution<float>(0.05f, 0.13f)(m_mt),
         .life   = life,
         .remain = life,
@@ -308,7 +346,7 @@ void Program::renderParticles(double time, double dt) {
       pos.z()                = 0.0f;
 
       clr.template head<3>() = particle.clr;
-      clr.w()                = fadeIn * float(std::min(1.0, 20.0 * dt));
+      clr.w()                = fadeIn;
 
       ts << Eigen::Translation3f(pos);
 
@@ -323,7 +361,7 @@ void Program::renderParticles(double time, double dt) {
 
       ts.restore();
 
-      particle.pos += particleField(particle.pos) * dt;
+      particle.pos += particleField(particle.pos, time) * dt;
     }
 
     ts.restore();
@@ -336,9 +374,34 @@ void Program::render(double time) {
   std::size_t lastMainFbuf = (m_mainFbuf - 1) % MAIN_FBUF_COUNT;
 
   {
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_particleFbufs[0]);
+
+    glViewport(0, 0, m_width, m_height);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearDepthf(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glEnable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glCullFace(GL_BACK);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+    // renderFieldLines(time);
+
+    renderParticles(time, dt);
+  }
+
+  {
     cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_mainFbufs[m_mainFbuf]);
 
     glViewport(0, 0, m_width, m_height);
+
+    glClearColor(0.0f, 0.5f, 0.0f, 1.0f);
+    glClearDepthf(1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
@@ -357,20 +420,23 @@ void Program::render(double time) {
       cgl::SelectModel(m_blitQuad).draw();
     }
 
-    glClearDepthf(1.0f);
-    glClear(GL_DEPTH_BUFFER_BIT);
-
-    glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
-    glCullFace(GL_BACK);
-    glDepthFunc(GL_LESS);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // renderFieldLines();
+    {
+      cgl::UseProgram         pgm(m_blit);
+      cgl::SelectTextureUnits tex(m_particleMap);
 
-    renderParticles(time, dt);
+      pgm.uniform("u_MAT_TRANSFORM")
+          .set(Eigen::Projective3f::Identity(), false);
+      pgm.uniform("u_S2D_TEXTURE").set(0);
+      pgm.uniform("u_FLT_ALPHA").set(1.0f);
+
+      cgl::SelectModel(m_blitQuad).draw();
+    }
   }
 
   glViewport(0, 0, m_width, m_height);
@@ -381,11 +447,7 @@ void Program::render(double time) {
 
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_ADD);
-  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-  renderBackground(1.0f);
+  glDisable(GL_BLEND);
 
   {
     cgl::UseProgram         pgm(m_blit);
@@ -462,5 +524,32 @@ void Program::resize(int width, int height) {
     glDisable(GL_BLEND);
 
     renderBackground(1.0f);
+  }
+
+  {
+    cgl::BindFramebuffer fbuf(GL_FRAMEBUFFER, m_particleFbufs[0]);
+
+    {
+      cgl::BindTexture tex = m_particleMap.bindTex(0);
+
+      tex.image(0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+      tex.param(GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      tex.param(GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      tex.param(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      tex.param(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+      fbuf.texture2D(GL_COLOR_ATTACHMENT0, tex, 0);
+    }
+
+    {
+      cgl::BindRenderbuffer rbuf(GL_RENDERBUFFER, m_particleRbufs[0]);
+
+      rbuf.storage(GL_DEPTH_COMPONENT16, width, height);
+
+      fbuf.renderBuf(GL_DEPTH_ATTACHMENT, rbuf);
+    }
+
+    fbuf.assertStatus();
   }
 }

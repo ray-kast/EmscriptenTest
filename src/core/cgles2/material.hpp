@@ -13,7 +13,7 @@
 namespace cgl {
 class Material {
   Program m_pgm;
-  bool         m_valid;
+  bool    m_valid;
 
 public:
   constexpr const auto &pgm() const {
