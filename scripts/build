@@ -381,6 +381,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     objs = []
     bcs = []
     files = []
+    statics = []
 
     Dir[File.join(real, "**/*.cpp")].each do |file|
       src = var_rel_path(:src_d, file)
@@ -402,6 +403,13 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       out = from.sub("$src_d", "$bin_d")
       build out, from: from, with: :cp
       files << out
+    end
+
+    Dir[File.join(real, "**/*.html")].each do |file|
+      from = var_rel_path(:src_d, file)
+      out = from.sub("$src_d", "$bin_d")
+      build out, from: from, with: :cp
+      statics << out
     end
 
     src = "$src_d/main.cpp"
@@ -432,7 +440,7 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
       description: "build #{name} (native)",
       default: true
 
-    phony "#{name}-web", is: web_out,
+    phony "#{name}-web", is: [web_out, *statics],
       description: "build #{name} (web)",
       default: true
   end

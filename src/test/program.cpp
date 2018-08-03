@@ -24,7 +24,7 @@ Program::Program(int, char **) :
     m_particles(1024) {
   // Window and context setup
 
-  const unsigned int START_W = 640, START_H = 480;
+  const unsigned int START_W = 1280, START_H = 720;
 
   m_xDisp   = cx::Display(nullptr);
   auto root = cx::Window::root(m_xDisp);
@@ -306,7 +306,7 @@ void Program::renderParticles(double time, double dt) {
       color *= pth::lerp(
           0.75f,
           1.0f,
-          std::pow(std::uniform_real_distribution(0_sc, 1_sc)(m_mt), 3));
+          float(std::pow(std::uniform_real_distribution(0_sc, 1_sc)(m_mt), 3)));
     }
 
     float life = std::uniform_real_distribution<float>(0.45f, 2.0f)(m_mt);
@@ -377,7 +377,7 @@ void Program::renderParticles(double time, double dt) {
 }
 
 void Program::render(double time) {
-  double dt = time - m_lastTime;
+  double dt = std::min(0.1, time - m_lastTime);
 
   std::size_t lastMainFbuf = (m_mainFbuf - 1) % MAIN_FBUF_COUNT;
 
