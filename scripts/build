@@ -67,6 +67,8 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     emcc: "$emscripten_d/emcc",
     emcxx: "$emscripten_d/em++",
     emld: "$emcxx",
+    glad_dbg: "$script_d/glad-dbg",
+    gen_debug_info: "$script_d/gen-debug-info",
     ld: "$cxx"
 
   include_dirs = [
@@ -324,6 +326,14 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     command: "$emld $emld_flags $flags -o $out $in",
     pool: :console
 
+  rule :glad_dbg,
+    info: "glad-dbg",
+    command: "$glad_dbg"
+
+  rule :gen_debug_info,
+    info: "gen-debug-info",
+    command: "$gen_debug_info"
+
   cc_pch_files.each do |file, out|
     build out, from: file, with: :cc_pch
   end
@@ -342,6 +352,17 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
     "$src_d",
     "$build_d"
   ].map{|i| "-I#{i}" }
+
+  build [
+    "$src_d/glad.c",
+    "$include_d/glad/glad.h",
+    "$include_d/KHR/khrplatform.h",
+  ], with: :glad_dbg
+
+  build [
+    "$src_d/core/initGLNames.hpp",
+    "$src_d/core/initGLSigs.hpp",
+  ], with: :gen_debug_info
 
   common_objs = []
   common_bcs = []

@@ -69,8 +69,6 @@ while gets
   end
 end
 
-$stderr << types["PFNGLBLENDBARRIERKHRPROC"].inspect << "\n"
-
 val_types.sort.each do |type, from|
   puts "// #{from.sort.join(", ")} -> #{type}"
 end
