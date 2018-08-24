@@ -346,6 +346,13 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
 
   cxx_pch_outs = cxx_pch_files.map{|_, o| o }
 
+  glad_debug_headers = [
+    "$src_d/core/initGLNames.hpp",
+    "$src_d/core/initGLSigs.hpp",
+  ]
+
+  glad_header = "$include_d/glad/glad.h"
+
   set includes: [
     "$src_d/common",
     "$src_d/core",
@@ -355,14 +362,13 @@ RNinja.run(rn_dir: "build/rninja", gen: RNinja[:gen]) do
 
   build [
     "$src_d/glad.c",
-    "$include_d/glad/glad.h",
+    glad_header,
     "$include_d/KHR/khrplatform.h",
   ], with: :glad_dbg
 
-  build [
-    "$src_d/core/initGLNames.hpp",
-    "$src_d/core/initGLSigs.hpp",
-  ], with: :gen_debug_info
+  build glad_debug_headers, with: :gen_debug_info, imply: glad_header
+
+  depend "$build_d/core/glad.o", on: glad_debug_headers
 
   common_objs = []
   common_bcs = []
